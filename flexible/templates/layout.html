@@ -14,7 +14,7 @@
 </head>
 <body>
     <div class="sidebar">
-        <h4><a href="/">🚀 Flexible</a></h4>
+        <h4><a href="{{ url_for('flexible.home') }}">🚀 Flexible</a></h4>
         <hr>
 		{% if current_user.is_authenticated %}
 			<div class="mb-3 p-2 bg-secondary bg-opacity-25 rounded text-center">
