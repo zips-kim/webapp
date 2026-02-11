@@ -1,0 +1,114 @@
+{% extends "layout.html" %}
+
+{% block title %}🏠 유성쉘터 (Shelter-On){% endblock %}
+
+{% block content %}
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 0 10px;">
+    <h2 style="margin: 0; color: #2c3e50;">📦 구호물품 관리</h2>
+    <div style="display: flex; gap: 10px;">
+        <button onclick="openModal('moveHistoryModal')" style="background:#f39c12; padding: 10px; color:white; border:none; border-radius:8px; cursor:pointer;" title="배분 이력 보기">
+            🕒 이력
+        </button>
+        <button onclick="openModal('supplyAddModal')" style="background:#3498db; padding: 10px; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">
+            ➕ 구호물품 등록
+        </button>
+    </div>
+</div>
+
+<div class="card" style="border-top: 5px solid #3498db;">
+    <h3 style="margin-top: 0; color: #0050b3;">🏢 본청(미배분)</h3>
+    <div class="mobile-card-container">
+        {% for item in hq_supplies %}
+        <div class="data-card" style="background: #f0f7ff; border: 1px solid #bae7ff;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <span style="font-weight: 800; font-size: 1.1rem; color: #0050b3;">{{ item[1] }}</span>
+                <span style="font-size: 1.3rem; font-weight: 900; color: #0050b3;">{{ item[2] }}개</span>
+            </div>
+            <form action="/add_inventory/{{ item[0] }}" method="post" style="display: flex; gap: 5px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dashed #bae7ff;">
+                <input type="number" name="quantity" value="0" min="-9999" required style="flex: 1; padding: 5px; border-radius: 4px; border: 1px solid #d9d9d9;">
+                <button type="submit" style="background: #27ae60; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-size: 0.85rem; cursor: pointer;">입고</button>
+            </form>
+            <form action="/allocate_supply" method="post" style="display: flex; gap: 5px;">
+                <input type="hidden" name="supply_id" value="{{ item[0] }}">
+                <select name="target_shelter_id" required style="flex: 1.5; padding: 8px; border-radius: 6px; border: 1px solid #d9d9d9;">
+                    <option value="">구호소 선택</option>
+                    {% for sh in all_shelters_list %}
+                    <option value="{{ sh[0] }}">{{ sh[1] }}</option>
+                    {% endfor %}
+                </select>
+                <input type="number" name="quantity" value="0" min="-9999" max="{{ item[2] }}" style="width: 50px; text-align: center; border: 1px solid #d9d9d9; border-radius: 6px;">
+                <button type="submit" style="background: #1890ff; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: bold;">배분</button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<h2 style="margin: 30px 0 15px 10px; color: #2c3e50;">🏛️ 구호소별 물품 현황</h2>
+<div class="mobile-card-container">
+    {% for sh_name, data in shelter_stocks.items() %}
+    <div class="data-card" style="border-top: 4px solid #27ae60;">
+        <h3 style="margin: 0 0 15px 0;">🏛️ {{ sh_name }}</h3>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+            {% for item in data['items'] %}
+            <div style="background: #f9f9f9; padding: 12px; border-radius: 8px; border: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-weight: bold; color: #34495e;">{{ item.name }}</span>
+                <span style="color: #27ae60; font-weight: 800;">{{ item.qty }}개</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div id="moveHistoryModal" class="modal">
+    <div class="modal-content" style="max-width: 800px; width: 95%;">
+        <span class="close" onclick="closeModal('moveHistoryModal')">&times;</span>
+        <h3 style="margin-bottom: 20px;">🚚 물품 배분 이력</h3>
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                <thead>
+                    <tr style="border-bottom: 2px solid #eee; color: #95a5a6; text-align: left;">
+                        <th style="padding: 10px;">구호소</th>
+                        <th style="padding: 10px;">품목</th>
+                        <th style="padding: 10px; text-align: right;">수량</th>
+						<th style="padding: 10px;">일시</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in move_history %}
+                    <tr style="border-bottom: 1px solid #f1f1f1;">
+                        <td style="font-weight: bold;">{{ log[2] }}</td>
+                        <td style="">{{ log[0] }}</td>
+                        <td style="text-align: right; color: #e67e22; font-weight: bold;">{{ log[1] }}개</td>
+						<td style="color: #999;">{{ log[3][5:16] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <button onclick="closeModal('moveHistoryModal')" style="width:100%; margin-top:20px; padding:12px; background:#1890ff; border:none; border-radius:8px; cursor:pointer;">닫기</button>
+    </div>
+</div>
+
+<div id="supplyAddModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal('supplyAddModal')">&times;</span>
+        <h3>📦 본부 물품 신규 입고</h3>
+        <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
+        <form action="/add_supply" method="post">
+            <div style="margin-bottom: 15px;">
+                <label style="display:block; font-weight:bold; margin-bottom:5px;">물품명</label>
+                <input type="text" name="item_name" placeholder="예: 구호세트 A형" required class="search-input" style="width:100%; box-sizing:border-box;">
+            </div>
+            <div style="margin-bottom: 20px;">
+                <label style="display:block; font-weight:bold; margin-bottom:5px;">입고 수량</label>
+                <input type="number" name="quantity" value="100" min="1" required class="search-input" style="width:100%; box-sizing:border-box;">
+            </div>
+            <button type="submit" style="width:100%; background:#3498db; color:white; border:none; padding:15px; border-radius:10px; font-weight:bold; font-size:1rem;">본부 입고 기록</button>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

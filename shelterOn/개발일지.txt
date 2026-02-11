@@ -1,0 +1,60 @@
+권한별 기능 (로그인)
+ - Lv1. 시스템 관리자 = 모든기능
+ - Lv2. 옵져버(대책본부) = 모니터링
+ - Lv3. 근무자(입소등록, 물품지급 등) = 물품지급, 입소주민 등록
+ - Lv4. 입소 주민 = 본인 정보
+ 
+물품관리를 구호소별로 할 수 있게
+
+집결지와 구호소를 지도에 표시
+
+python -m pip install pytest
+
+python -m pytest -s tests/test.py
+
+python -m pip install flask-socketio
+
+python -m pip install pandas openpyxl
+
+python -m pip install requests
+
+*python -m pip install flask-sqlalchemy python-dotenv
+
+*python -m pip install eventlet
+
+update assembly_destinations set waypoints="127.412678,36.385742|127.358526,36.359139"
+
+
+
+python -m pip install finance-datareader pandas scikit-learn
+
+python -m pip install streamlit finance-datareader scikit-learn pandas
+
+
+python -m pip install xgboost
+
+python -m pip install schedule requests
+
+python -m pip install setuptools
+
+start /b python stock_alarm.py
+
+python -m pip install pykrx
+
+wmic process where "name='python.exe'" get commandline, processid
+taskkill /PID 1234 /F
+
+python -m pip install flask schedule pykrx yfinance finance-datareader scikit-learn pandas
+
+python -m pip install pystray Pillow
+
+start pythonw stock_alarm.py
+
+python -m pip install beautifulsoup4
+
+
+
+
+python -m pip install flask-login
+
+python -m pip install pandas openpyxl

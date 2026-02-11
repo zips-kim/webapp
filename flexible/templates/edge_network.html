@@ -1,0 +1,78 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<style>
+    /* 모달 내부용 스타일 */
+    .sidebar { display: none !important; }
+    .content { padding: 0 !important; margin: 0 !important; }
+    body { background: white; overflow: hidden; }
+</style>
+
+<div class="d-flex flex-column h-100">
+    <div class="p-3 border-bottom bg-light d-flex justify-content-center align-items-center gap-3 shadow-sm" style="z-index:10;">
+        <span class="badge bg-primary fs-6 px-3 py-2">{{ src_title }}</span>
+        <span class="text-muted fw-bold">──────▶</span>
+        <span class="badge bg-success fs-6 px-3 py-2">{{ tgt_title }}</span>
+    </div>
+    
+    <div id="mynetwork" style="width: 100%; height: 100%;"></div>
+</div>
+
+<script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+<script>
+    const rawNodes = {{ nodes | tojson }};
+    const rawLinks = {{ links | tojson }};
+
+    // 1. 노드 설정
+    const nodes = new vis.DataSet(
+        rawNodes.map(n => ({
+            id: n.id,
+            label: n.label,
+            level: n.level, // 0: Source(좌), 1: Target(우)
+            shape: n.level === 0 ? 'box' : 'ellipse', // 모양 구분
+            color: {
+                background: n.level === 0 ? '#dbe4ff' : '#d1fae5', // 파랑 -> 초록
+                border: n.level === 0 ? '#3b82f6' : '#10b981',
+            },
+            borderWidth: 1,
+            font: { size: 14, color: '#333' },
+            widthConstraint: { maximum: 120 }
+        }))
+    );
+
+    // 2. 엣지 설정
+    const edges = new vis.DataSet(
+        rawLinks.map(l => ({
+            from: l.from, to: l.to,
+            arrows: 'to', 
+            color: { color: '#94a3b8', opacity: 0.6 },
+            width: 1.5,
+            smooth: { type: 'cubicBezier', roundness: 0.5 }
+        }))
+    );
+
+    const container = document.getElementById('mynetwork');
+    const data = { nodes, edges };
+    
+    // 3. 레이아웃 설정 (좌우 배치)
+    const options = {
+        layout: {
+            hierarchical: {
+                enabled: true,
+                direction: "LR", // Left to Right
+                sortMethod: "directed",
+                levelSeparation: 300, // 좌우 간격
+                nodeSpacing: 60       // 상하 간격
+            }
+        },
+        physics: false, // 깔끔한 정렬을 위해 물리 엔진 OFF
+        interaction: { 
+            hover: true, 
+            zoomView: true, 
+            dragView: true 
+        } 
+    };
+
+    new vis.Network(container, data, options);
+</script>
+{% endblock %}

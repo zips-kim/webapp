@@ -1,0 +1,25 @@
+{% extends "layout.html" %}
+{% block title %}시스템 오류 - 유성쉘터{% endblock %}
+{% block content %}
+<div class="error-wrapper">
+    <div class="error-emoji">🚨</div>
+    <h1 class="error-title" style="color: #c0392b;">시스템 오류가 발생했습니다.</h1>
+    <p class="error-desc">
+        서버 내부에서 예상치 못한 문제가 발생했습니다.<br>
+        잠시 후 다시 시도해 주시기 바랍니다.
+    </p>
+
+    {% if error %}
+    <div class="error-code-box">
+        <strong>Error Details:</strong><br>
+        {{ error }}
+    </div>
+    {% endif %}
+
+    <div>
+        <a href="/" class="btn-base btn-dark" style="padding: 15px 30px; font-size: 1.1rem; box-shadow: 0 4px 6px rgba(44, 62, 80, 0.3);">
+            🔄 새로고침 / 홈으로
+        </a>
+    </div>
+</div>
+{% endblock %}

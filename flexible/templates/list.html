@@ -1,0 +1,333 @@
+{% extends "layout.html" %}
+
+{% block content %}
+
+	<div class="d-flex justify-content-between align-items-center mb-4">
+		<h2 class="fw-bold m-0">📄 {{ form.title }}</h2>
+		<span class="text-muted fs-6">총 {{ total_count }}건의 데이터가 있습니다.</span>
+		
+		<div class="d-flex gap-2">
+            {# [권한 적용] 관리자만 '설정' 버튼 보임 #}
+            {% if current_user.is_admin %}
+			    <a href="{{ url_for('edit_form', form_id=form.id) }}"  class="btn btn-primary">⚙️ 설정</a>
+            {% endif %}
+
+			<div class="btn-group" role="group">
+				<button type="button" class="btn btn-outline-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+					📊 엑셀 관리
+				</button>
+				<ul class="dropdown-menu dropdown-menu-end shadow">
+					<li>
+						<a class="dropdown-item" href="/excel/download/{{ form.id }}">
+							💾 전체 데이터 다운로드
+						</a>
+					</li>
+					{# [권한 적용] 등록 권한 체크 #}
+					{% if has_permission(form, 'create') %}
+					<li><hr class="dropdown-divider"></li>
+					<li>
+						<a class="dropdown-item" href="/excel/template/{{ form.id }}">
+							⬇️ 업로드용 서식 다운로드
+						</a>
+					</li>
+					<li>
+						<button class="dropdown-item" onclick="document.getElementById('excelInput').click()">
+							⬆️ 엑셀 파일 업로드
+						</button>
+					</li>
+					{% endif %}
+
+                    {# [권한 적용] 관리자만 '전체 삭제' 메뉴 보임 #}
+                    {% if current_user.is_admin %}
+					    <li><hr class="dropdown-divider"></li>
+					    <li>
+						    <form action="/entry/delete_all/{{ form.id }}" method="POST" 
+							      onsubmit="return confirm('⚠️ 경고: 정말로 이 폼의 모든 데이터를 삭제하시겠습니까?\n\n이 작업은 절대 되돌릴 수 없습니다!');">
+							    <button type="submit" class="dropdown-item text-danger fw-bold">
+								    💣 데이터 전체 삭제 (초기화)
+							    </button>
+						    </form>
+					    </li>
+                    {% endif %}
+				</ul>
+			</div>
+
+			<div class="d-flex gap-2">
+                {# [권한 적용] 등록 권한 체크 #}
+				{% if has_permission(form, 'create') %}
+					<a href="/entry/create/{{ form.id }}" class="btn btn-primary">
+						+ 데이터 등록
+					</a>
+				{% endif %}
+			</div>
+		</div>
+	</div>
+
+	<form id="uploadForm" action="/excel/upload/{{ form.id }}" method="POST" enctype="multipart/form-data" style="display:none;">
+		<input type="file" name="file" id="excelInput" accept=".xlsx, .xls" onchange="document.getElementById('uploadForm').submit();">
+	</form>
+    
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex gap-2">
+            <a href="/list/network/{{ form.id }}" class="btn btn-outline-info">🕸️ 관계 분석</a>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#filterPanel">
+                🔍 상세 검색 필터
+            </button>
+            <form class="d-flex" role="search">
+                <input class="form-control me-2" type="search" name="q" value="{{ search_query }}" placeholder="통합 검색...">
+                <button class="btn btn-outline-dark" type="submit">Go</button>
+            </form>
+        </div>
+    </div>
+
+<div class="collapse mb-4" id="filterPanel">
+    <div class="card card-body bg-light border-0 shadow-sm">
+        <form method="GET" action="/list/{{ form.id }}">
+            <div class="row g-3">
+                {% for field in schema %}
+                    {% if field.show_list %} <div class="col-md-3">
+                        <label class="form-label small fw-bold text-muted">{{ field.label }}</label>
+                        
+                        {% if field.type == 'date' %}
+                            <div class="input-group input-group-sm">
+                                <input type="date" name="start_{{ field.key }}" class="form-control" 
+                                       value="{{ current_filters.get('start_' + field.key, '') }}">
+                                <span class="input-group-text">~</span>
+                                <input type="date" name="end_{{ field.key }}" class="form-control" 
+                                       value="{{ current_filters.get('end_' + field.key, '') }}">
+                            </div>
+
+                        {% elif field.type == 'relation' or field.options %}
+							<select name="filter_{{ field.key }}" class="form-select form-select-sm">
+								<option value="">전체</option>
+								
+								{# 1. 관계형(Relation)인 경우 DB에서 가져온 데이터 표시 #}
+								{% if field.type == 'relation' %}
+									{% for opt in filter_options[field.key] %}
+										<option value="{{ opt.id }}" {% if current_filters.get('filter_' + field.key) == opt.id %}selected{% endif %}>
+											{{ opt.text }}
+										</option>
+									{% endfor %}
+									
+								{# 2. 일반 텍스트지만 옵션(options)이 정의된 경우 #}
+								{% elif field.options %}
+									{% for opt in field.options.split(',') %}
+										{% set val = opt.strip() %} <option value="{{ val }}" {% if current_filters.get('filter_' + field.key) == val %}selected{% endif %}>
+											{{ val }}
+										</option>
+									{% endfor %}
+								{% endif %}
+							</select>
+
+                        {% else %}
+                            <input type="text" name="filter_{{ field.key }}" class="form-control form-control-sm" 
+                                   value="{{ current_filters.get('filter_' + field.key, '') }}" placeholder="검색어...">
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            
+            <div class="d-flex justify-content-end gap-2 mt-3 border-top pt-3">
+                <a href="/list/{{ form.id }}" class="btn btn-sm btn-outline-secondary">🔄 초기화</a>
+                <button type="submit" class="btn btn-sm btn-primary fw-bold px-4">필터 적용</button>
+            </div>
+        </form>
+    </div>
+</div>
+    
+    {# === CASE 1: 카드형 뷰 (Card View) === #}
+    {% if form.view_type == 'card' %}
+    
+        <div class="row g-3">
+            {% for item in data_list %}
+            <div class="col-xl-3 col-lg-4 col-md-6">
+                <div class="card h-100 shadow-sm hover-shadow transition-all">
+                    
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                        <h5 class="card-title m-0 fw-bold text-truncate" style="max-width: 70%;">
+                            {% set first_key = schema[0].key %}
+                            {{ item.data[first_key] }}
+                        </h5>
+                        
+                        <div class="dropdown">
+                            <button class="btn btn-light btn-sm rounded-circle" type="button" data-bs-toggle="dropdown">
+                                ⋮
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="/entry/network/{{ item.id }}">🕸️ 관계 분석</a></li>
+                                
+                                {# [권한 적용] 수정 권한 #}
+                                {% if has_permission(form, 'update') %}
+                                    <li><a class="dropdown-item" href="/entry/edit/{{ item.id }}?page={{ page }}">✏️ 수정</a></li>
+                                {% endif %}
+
+                                {# [권한 적용] 삭제 권한 #}
+                                {% if has_permission(form, 'delete') %}
+                                    <li>
+                                        <form action="/entry/delete/{{ item.id }}" method="POST" onsubmit="return confirm('삭제하시겠습니까?');">
+                                            <button class="dropdown-item text-danger">🗑️ 삭제</button>
+                                        </form>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="card-body">
+                        
+                        {% for field in schema %}
+                            {% if field.type == 'file' and item.data[field.key] %}
+                                {% set ext = item.data[field.key].split('.')[-1].lower() %}
+                                {% if ext in ['jpg', 'jpeg', 'png', 'gif'] %}
+                                    <div class="mb-3 text-center bg-light rounded overflow-hidden" style="height: 150px;">
+                                        <img src="{{ url_for('static', filename='uploads/' + item.data[field.key]) }}" 
+                                             class="w-100 h-100 object-fit-cover" alt="image">
+                                    </div>
+                                {% endif %}
+                            {% endif %}
+                        {% endfor %}
+
+                        <div class="vstack gap-2">
+                            {% for field in schema %}
+                                {# 첫번째 필드(제목)와 파일은 제외하고 표시 #}
+                                {% if not loop.first and field.type != 'file' and field.show_list %}
+                                    <div class="d-flex justify-content-between small">
+                                        <span class="text-muted">{{ field.label }}</span>
+                                        <span class="fw-medium text-end text-truncate" style="max-width: 60%;">
+                                            {% if field.type == 'relation' %}
+                                                {% set val = item.data[field.key] %}
+                                                {% if val is iterable and val is not string %}
+                                                    {# 리스트인 경우 #}
+                                                    <span class="badge bg-secondary">{{ val|length }}개 연결</span>
+                                                {% else %}
+                                                    {# 단일 값인 경우 #}
+                                                    {{ lookup_map[field.key][val|string] if val else '-' }}
+                                                {% endif %}
+                                            {% else %}
+                                                {{ item.data[field.key] }}
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="card-footer bg-light py-2">
+                        <small class="text-muted">📅 {{ item.created_at[:10] }}</small>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+    {# === CASE 2: 리스트형 뷰 (Table View) === #}
+    {% else %}
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th width="50">No</th>
+                        {% for field in schema %}
+                            {% if field.show_list %}
+                            <th>{{ field.label }}</th>
+                            {% endif %}
+                        {% endfor %}
+                        <th width="150">등록일</th>
+                        <th width="150" class="text-end">관리</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in data_list %}
+                    <tr>
+                        <td>{{ item.id }}</td>
+                        
+                        {% for field in schema %}
+                            {% if field.show_list %}
+                            <td>
+                                {% if field.type == 'file' and item.data[field.key] %}
+                                    <a href="{{ url_for('static', filename='uploads/' + item.data[field.key]) }}" target="_blank" class="text-decoration-none">
+                                        📎 <small>{{ item.data[field.key][:10] }}...</small>
+                                    </a>
+                                
+                                {% elif field.type == 'relation' %}
+                                    {% set val = item.data[field.key] %}
+                                    {% if val %}
+                                        {% if val is iterable and val is not string %}
+                                            {% for v in val %}
+                                                <span class="badge bg-secondary me-1">
+                                                    {{ lookup_map[field.key][v|string] }}
+                                                </span>
+                                            {% endfor %}
+                                        {% else %}
+                                            <span class="badge bg-light text-dark border">
+                                                {{ lookup_map[field.key][val|string] }}
+                                            </span>
+                                        {% endif %}
+                                    {% endif %}
+
+                                {% else %}
+                                    {{ item.data[field.key] }}
+                                {% endif %}
+                            </td>
+                            {% endif %}
+                        {% endfor %}
+
+                        <td><small class="text-muted">{{ item.created_at[:16] }}</small></td>
+                        
+                        <td class="text-end text-nowrap">
+                            <a href="/entry/network/{{ item.id }}" class="btn btn-sm btn-outline-info me-1" title="연관 분석">🕸️</a>
+                            
+                            {# [권한 적용] 수정 권한 #}
+                            {% if has_permission(form, 'update') %}
+								<a href="{{ url_for('edit_entry', entry_id=item.id) }}?page={{ page }}" class="btn btn-sm btn-outline-primary me-1">수정</a>
+							{% endif %}
+
+                            {# [권한 적용] 삭제 권한 #}
+                            {% if has_permission(form, 'delete') %}
+                                <form action="/entry/delete/{{ item.id }}" method="POST" onsubmit="return confirm('삭제하시겠습니까?');" style="display:inline-block;">
+                                    <button class="btn btn-sm btn-outline-danger">삭제</button>
+                                </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    {% endif %}
+
+    {% if total_pages > 1 %}
+    <nav class="mt-4">
+        {# [수정됨] 파라미터 충돌 방지를 위해 request.args 복사 후 page 키 제거 #}
+        {% set args = request.args.copy() %}
+        {% do args.pop('page', None) %}
+
+        <ul class="pagination justify-content-center">
+			<li class="page-item {% if page == 1 %}disabled{% endif %}">
+                {# **args 로 변경하여 충돌 해결 #}
+				<a class="page-link" href="{{ url_for('list_entries', form_id=form.id, page=page-1, **args) }}">이전</a>
+			</li>
+
+			{% for p in range(1, total_pages + 1) %}
+			<li class="page-item {% if p == page %}active{% endif %}">
+				<a class="page-link" href="{{ url_for('list_entries', form_id=form.id, page=p, **args) }}">
+					{{ p }}
+				</a>
+			</li>
+			{% endfor %}
+
+			<li class="page-item {% if page == total_pages %}disabled{% endif %}">
+				<a class="page-link" href="{{ url_for('list_entries', form_id=form.id, page=page+1, **args) }}">다음</a>
+			</li>
+		</ul>
+    </nav>
+    {% endif %}
+
+{% endblock %}

@@ -1,0 +1,623 @@
+{% extends "layout.html" %}
+
+{% block title %}🚨 사고 관리 대시보드{% endblock %}
+
+{% block content %}
+<style>
+    /* =========================================
+       1. 기본 레이아웃 & 유틸리티
+       ========================================= */
+    .dashboard-container {
+        max_width: 1400px;
+        margin: 0 auto;
+        padding: 10px;
+        background: #f8fafc; /* 배경색을 아주 연한 쿨그레이로 변경하여 깔끔함 더함 */
+        min-height: calc(100vh - 60px);
+        font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+    }
+
+    /* =========================================
+       2. 대시보드 헤더 영역 (수정됨)
+       ========================================= */
+    .dash-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: white;
+        padding: 15px 25px;
+        border-radius: 16px; /* 둥근 모서리 강화 */
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); /* 부드러운 그림자 */
+        margin-bottom: 25px;
+        flex-wrap: wrap; /* 화면 작을 때 줄바꿈 허용 */
+        gap: 15px;
+    }
+
+    .header-title {
+        font-size: 24px;
+        font-weight: 800;
+        color: #1e293b;
+        letter-spacing: -0.5px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 200px;
+    }
+
+    /* 탭 디자인 */
+    .status-tabs {
+        display: flex;
+        background: #f1f5f9;
+        padding: 4px;
+        border-radius: 10px;
+        /* 중앙 정렬 느낌을 위해 마진 조정 */
+        margin-right: auto; 
+    }
+
+    .status-tab {
+        padding: 8px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 700;
+        color: #64748b;
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+    .status-tab.active {
+        background: white;
+        color: #0f172a;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .status-tab:hover:not(.active) {
+        color: #334155;
+        background: rgba(255,255,255,0.6);
+    }
+
+    /* [수정] 검색창 및 버튼 그룹 */
+    .action-group {
+        display: flex;
+        align-items: center;
+        gap: 12px; /* 요소 사이 간격 */
+    }
+
+    /* 검색 폼 스타일링 */
+    .search-form {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    /* 검색창 및 버튼 그룹 */
+    .action-group {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    /* 검색 폼 (상대 위치 지정) */
+    .search-form {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .search-icon-deco {
+        position: absolute;
+        left: 14px;
+        color: #94a3b8;
+        font-size: 16px;
+        pointer-events: none;
+    }
+
+    /* [NEW] X(초기화) 버튼 스타일 */
+    .btn-search-clear {
+        position: absolute;
+        right: 12px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #cbd5e0;
+        color: white;
+        border: none;
+        font-size: 12px;
+        display: none; /* 기본 숨김 */
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .btn-search-clear:hover { background: #94a3b8; }
+
+    .search-input {
+        height: 42px;
+        /* 오른쪽 패딩을 늘려 X 버튼 공간 확보 */
+        padding: 0 40px 0 40px; 
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: 14px;
+        width: 240px;
+        background: #ffffff;
+        color: #1e293b;
+        outline: none;
+        transition: all 0.2s;
+		margin-top:10px;
+    }
+    
+    .search-input:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+    }
+    
+    /* 신규 등록 버튼 */
+    .btn-new {
+        height: 42px;
+        background: #1e293b;
+        color: white;
+        border: none;
+        padding: 0 24px;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 14px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        white-space: nowrap;
+    }
+    .btn-new:hover { 
+        background: #0f172a; 
+        transform: translateY(-1px);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    }
+
+    /* =========================================
+       3. 카드 그리드 & 컴팩트 카드 스타일
+       ========================================= */
+    .card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 20px;
+    }
+
+    .incident-card {
+        background: white;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+		
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        position: relative;
+    }
+
+    .incident-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.1);
+        border-color: #cbd5e0;
+    }
+
+    /* 상단 컬러 라인 */
+    .card-banner { height: 4px; width: 100%; }
+    .banner-real { background: linear-gradient(90deg, #ef4444, #b91c1c); }
+    .banner-drill { background: linear-gradient(90deg, #3b82f6, #1d4ed8); }
+
+    /* 카드 헤더 */
+    .card-header-area {
+        padding: 12px 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .badge-wrap { display: flex; align-items: center; gap: 6px; }
+
+    /* 메인 뱃지 */
+    .cat-badge {
+        font-size: 11px; font-weight: 800; color: white;
+        padding: 3px 8px; border-radius: 6px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        letter-spacing: 0.5px;
+    }
+    .bg-real { background: #ef4444; }
+    .bg-drill { background: #3b82f6; }
+
+    /* 유형 뱃지 */
+    .type-badge {
+        font-size: 11px; font-weight: 700; color: #475569;
+        background: #f1f5f9; padding: 3px 8px; border-radius: 6px;
+        border: 1px solid #e2e8f0;
+    }
+
+    /* 상태 표시 */
+    .status-indicator {
+        display: flex; align-items: center; gap: 5px;
+        font-size: 11px; font-weight: 700;
+        padding: 4px 10px; border-radius: 20px;
+        border: 1px solid;
+    }
+    .status-active { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+    .status-closed { background: #f8fafc; color: #94a3b8; border-color: #e2e8f0; }
+
+    /* 펄스 애니메이션 */
+    .pulse-dot { width: 6px; height: 6px; border-radius: 50%; display: block; }
+    .dot-active { background: #22c55e; animation: pulse-green 1.5s infinite; }
+    .dot-closed { background: #cbd5e0; }
+
+    @keyframes pulse-green {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 5px rgba(34, 197, 94, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+    }
+
+    /* 타이틀 영역 */
+    .card-title-box { padding: 0 16px 14px 16px; }
+    .card-title {
+        font-size: 17px; font-weight: 800; color: #1e293b;
+        margin-bottom: 5px; line-height: 1.3;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .card-date {
+        font-size: 12px; color: #94a3b8; font-weight: 500;
+        display: flex; align-items: center; gap: 4px;
+    }
+
+    /* 통계 그리드 */
+    .stats-grid {
+        display: grid; grid-template-columns: 1fr 1fr;
+        gap: 1px; background: #e2e8f0;
+        border-top: 1px solid #e2e8f0;
+        border-bottom: 1px solid #e2e8f0;
+        margin-top: auto;
+    }
+    .stat-item {
+        background: white; padding: 10px;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        transition: background 0.2s;
+    }
+    .stat-item:hover { background: #f8fafc; }
+    
+    .stat-val { font-size: 16px; font-weight: 800; color: #334155; line-height: 1.2; }
+    .stat-label { font-size: 11px; color: #64748b; font-weight: 600; margin-top: 2px; }
+
+    /* 하단 버튼 영역 */
+    .card-actions {
+        padding: 10px 16px;
+        background: #f8fafc;
+        display: flex; gap: 8px; align-items: center;
+    }
+    
+    .btn-main {
+        flex: 1; background: #1e293b; color: white; text-align: center;
+        padding: 10px; border-radius: 8px; font-weight: 700; font-size: 13px;
+        text-decoration: none; transition: background 0.2s;
+        border: 1px solid transparent;
+    }
+    .btn-main:hover { background: #0f172a; }
+    
+    .btn-settings {
+        width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+        color: #94a3b8; cursor: pointer; border-radius: 8px; transition: all 0.2s;
+        border: 1px solid #e2e8f0; background: white; font-size: 14px;
+    }
+    .btn-settings:hover { color: #475569; border-color: #cbd5e0; background: #f1f5f9; }
+
+    /* 페이지네이션 */
+    .pagination { margin-top: 40px; display: flex; justify-content: center; gap: 6px; }
+    .page-num {
+        width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+        border-radius: 8px; background: white; border: 1px solid #e2e8f0;
+        color: #64748b; font-weight: 600; text-decoration: none; transition: all 0.2s;
+    }
+    .page-num.active { background: #0f172a; color: white; border-color: #0f172a; }
+    .page-num:hover:not(.active) { background: #f1f5f9; }
+
+    /* 모달 스타일 */
+    #customModalOverlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(3px);
+        display: none; align-items: center; justify-content: center; z-index: 2000;
+    }
+    #customModalOverlay.show { display: flex; animation: fadeIn 0.2s; }
+    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+    
+    .modal-box {
+        background: white; width: 95%; max-width: 500px; border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.2); overflow: hidden;
+        animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes slideUp { from{transform:translateY(20px); opacity:0} to{transform:translateY(0); opacity:1} }
+	
+	/* [NEW] 라디오 버튼 그룹 스타일 (체크박스처럼 보이게) */
+    .radio-group {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .radio-group input[type="radio"] {
+        display: none; /* 실제 라디오 버튼 숨김 */
+    }
+    
+    .radio-group label {
+        flex: 1;
+        padding: 12px;
+        border: 1px solid #cbd5e0;
+        border-radius: 8px;
+        text-align: center;
+        cursor: pointer;
+        font-weight: 700;
+        font-size: 14px;
+        color: #64748b;
+        background: white;
+        transition: all 0.2s;
+    }
+
+    /* 훈련 선택 시 스타일 */
+    .radio-group input[value="훈련"]:checked + label {
+        background: #eff6ff;
+        color: #3b82f6;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    }
+
+    /* 실제사고 선택 시 스타일 */
+    .radio-group input[value="실제사고"]:checked + label {
+        background: #fef2f2;
+        color: #ef4444;
+        border-color: #ef4444;
+        box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+    }
+    
+</style>
+
+<div class="dashboard-container">
+    
+    <div class="dash-header">
+        <div class="header-title">
+            🚨 사고 관리 대시보드
+        </div>
+        
+        <div class="status-tabs">
+            <a href="/?status=ACTIVE" class="status-tab {{ 'active' if current_status == 'ACTIVE' else '' }}">
+                🔥 진행중 ({{ cnt_active }})
+            </a>
+            <a href="/?status=CLOSED" class="status-tab {{ 'active' if current_status == 'CLOSED' else '' }}">
+                🏁 종료됨 ({{ cnt_closed }})
+            </a>
+        </div>
+
+        <div class="action-group">
+            <form action="/" method="GET" class="search-form" id="searchForm">
+                <input type="hidden" name="status" value="{{ current_status }}">
+                <span class="search-icon-deco">🔍</span>
+                <input type="text" name="search" id="searchInput" class="search-input" 
+                       placeholder="사고명 검색..." value="{{ search }}" autocomplete="off"
+                       oninput="toggleClearBtn()">
+                
+                <button type="button" id="btnSearchClear" class="btn-search-clear" onclick="clearSearch()">✕</button>
+            </form>
+            
+            {% if session.role_level <= 2 %}
+            <button onclick="openModal()" class="btn-new">
+                <span>+</span> <span>신규 등록</span>
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card-grid">
+        {% for inc in incidents %}
+        <div class="incident-card">
+            <div class="card-banner {{ 'banner-real' if inc.incident_category == '실제사고' else 'banner-drill' }}"></div>
+
+            <div class="card-header-area">
+                <div class="badge-wrap">
+					<span class="type-badge">
+                        {{ inc.incident_category }}
+                    </span>
+                    <span class="cat-badge {{ 'bg-real' if inc.incident_category == '실제사고' else 'bg-drill' }}">
+                        {{ inc.incident_type }}
+                    </span>
+					<div class="card-date">
+						<span>🕒</span> {{ inc.incident_time or '시간 미정' }}
+					</div>
+                </div>
+                
+                <div class="status-indicator {{ 'status-active' if inc.status == 'ACTIVE' else 'status-closed' }}">
+                    <span class="pulse-dot {{ 'dot-active' if inc.status == 'ACTIVE' else 'dot-closed' }}"></span>
+                    {{ '진행중' if inc.status == 'ACTIVE' else '종료' }}
+                </div>
+            </div>
+
+            <div class="card-title-box">
+                <div class="card-title">{{ inc.title }}</div>
+                
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-val">{{ inc.stat_shelters }}</div>
+                    <div class="stat-label">🏥 구호소</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-val">{{ inc.stat_assemblies }}</div>
+                    <div class="stat-label">🚩 집결지</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-val" style="color:#2563eb;">{{ inc.stat_residents | format_number }}</div>
+                    <div class="stat-label">👥 이재민</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-val" style="color:#059669;">{{ inc.stat_supplies | format_number }}</div>
+                    <div class="stat-label">📦 구호물품</div>
+                </div>
+            </div>
+
+            <div class="card-actions">
+                <a href="{{ url_for('view_map', incident_id=inc.id) }}" class="btn-main">
+                    시스템 접속 ➜
+                </a>
+                {% if session.role_level <= 2 %}
+                <div style="position:relative;">
+                    <button class="btn-settings" onclick="toggleMenu(this)">⚙️</button>
+                    <div class="menu-dropdown" style="display:none; position:absolute; bottom:110%; right:0; background:white; border:1px solid #e2e8f0; border-radius:10px; width:130px; box-shadow:0 10px 25px rgba(0,0,0,0.1); z-index:10; overflow:hidden;">
+                        <a href="{{ url_for('toggle_incident_status', incident_id=inc.id) }}" 
+                           onclick="return confirm('상태를 변경하시겠습니까?')"
+                           style="display:block; padding:12px; text-decoration:none; color:#334155; font-size:12px; font-weight:600; border-bottom:1px solid #f1f5f9;">
+                           {{ '🏁 종료 처리' if inc.status == 'ACTIVE' else '🔄 다시 재개' }}
+                        </a>
+                        <form action="{{ url_for('manage_incident') }}" method="POST" onsubmit="return confirm('정말 삭제하시겠습니까? 데이터가 모두 사라집니다.');">
+                            <input type="hidden" name="action" value="delete">
+                            <input type="hidden" name="incident_id" value="{{ inc.id }}">
+                            <button type="submit" style="width:100%; text-align:left; background:none; border:none; padding:12px; color:#ef4444; font-weight:700; cursor:pointer; font-size:12px;">🗑️ 삭제하기</button>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <div style="grid-column: 1/-1; text-align:center; padding:60px; color:#94a3b8;">
+            <div style="font-size:48px; margin-bottom:15px; opacity:0.5;">📂</div>
+            <div style="font-size:16px;">등록된 사고 데이터가 없습니다.</div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if pagination.pages > 1 %}
+    <div class="pagination">
+        {% if pagination.has_prev %}
+        <a href="{{ url_for('incident', page=pagination.prev_num, status=current_status, search=search) }}" class="page-num">&lt;</a>
+        {% endif %}
+        {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+            {% if p %}
+                <a href="{{ url_for('incident', page=p, status=current_status, search=search) }}" class="page-num {{ 'active' if p == pagination.page else '' }}">{{ p }}</a>
+            {% else %}
+                <span class="page-num" style="border:none">...</span>
+            {% endif %}
+        {% endfor %}
+        {% if pagination.has_next %}
+        <a href="{{ url_for('incident', page=pagination.next_num, status=current_status, search=search) }}" class="page-num">&gt;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+</div>
+
+<div id="customModalOverlay" onclick="if(event.target === this) closeCustomModal()">
+    <div class="modal-box">
+		<form action="{{ url_for('manage_incident') }}" method="POST">
+			<input type="hidden" name="action" value="create">
+			
+			<div style="padding: 24px; background: #0f172a; color: white; display: flex; justify-content: space-between; align-items: center;">
+				<h3 style="margin:0; font-size:18px; font-weight:800;">🚀 신규 사고 관제 등록</h3>
+				<span style="cursor:pointer; font-size:24px; opacity:0.7;" onclick="closeCustomModal()">&times;</span>
+			</div>
+			
+			<div style="padding: 30px;">
+				<div style="margin-bottom:25px;">
+					<label style="display:block; font-size:13px; font-weight:700; color:#64748b; margin-bottom:8px;">사고 구분</label>
+					<div class="radio-group">
+						<input type="radio" id="cat_drill" name="incident_category" value="훈련" checked>
+						<label for="cat_drill">🔵 훈련</label>
+
+						<input type="radio" id="cat_real" name="incident_category" value="실제사고">
+						<label for="cat_real">🔴 실제사고</label>
+					</div>
+				</div>
+				
+				<div style="margin-bottom:20px;">
+					<label style="display:block; font-size:13px; font-weight:700; color:#64748b; margin-bottom:6px;">사고 명칭</label>
+					<input type="text" name="title" placeholder="예: 2026 유성구 방재 훈련" required
+						   style="width:100%; padding:12px; border:1px solid #cbd5e0; border-radius:8px; font-size:14px; box-sizing: border-box;">
+				</div>
+				
+				<div style="display:flex; gap:15px; margin-bottom:20px;">
+					<div style="flex:1;">
+						<label style="display:block; font-size:13px; font-weight:700; color:#64748b; margin-bottom:6px;">유형</label>
+						<select name="incident_type" style="width:100%; padding:12px; border:1px solid #cbd5e0; border-radius:8px; font-size:14px;">
+							{% for type in incident_types %}
+								<option value="{{ type }}">{{ type }}</option>
+							{% endfor %}
+						</select>
+					</div>
+					
+					<div style="flex:1.5;">
+						<label style="display:block; font-size:13px; font-weight:700; color:#64748b; margin-bottom:6px;">발생 일시</label>
+						<input type="text" name="incident_time" 
+							   style="width:100%; padding:12px; border:1px solid #cbd5e0; border-radius:8px; font-size:14px; box-sizing: border-box;">
+					</div>
+				</div>
+
+				<div style="background:#f0f9ff; padding:15px; border-radius:8px; font-size:13px; color:#0369a1; line-height:1.5; border:1px solid #bae6fd;">
+					<b>💡 자동 세팅 안내</b><br>
+					사고를 생성하면 선택한 유형에 맞는 <u>표준 구호소 및 집결지 데이터</u>가 자동으로 복사되어 초기화됩니다.
+				</div>
+			</div>
+			
+			<div style="padding: 20px 30px; background: #f8fafc; display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #e2e8f0;">
+				<button type="button" onclick="closeCustomModal()" style="padding: 12px 24px; border: 1px solid #cbd5e0; background: white; border-radius: 8px; font-weight:700; color:#475569; cursor: pointer;">취소</button>
+				<button type="submit" style="padding: 12px 24px; background: #0f172a; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;">생성하기</button>
+			</div>
+		</form>
+	</div>
+</div>
+
+<script>
+    // 페이지 로드 시 검색어 있으면 X버튼 표시
+    document.addEventListener("DOMContentLoaded", function() {
+        toggleClearBtn();
+    });
+
+    function toggleClearBtn() {
+        const input = document.getElementById('searchInput');
+        const btn = document.getElementById('btnSearchClear');
+        if(input.value.length > 0) {
+            btn.style.display = 'flex';
+        } else {
+            btn.style.display = 'none';
+        }
+    }
+
+    function clearSearch() {
+        const input = document.getElementById('searchInput');
+        input.value = '';
+        toggleClearBtn();
+        // 검색어 초기화 후 폼 제출 (리셋)
+        document.getElementById('searchForm').submit();
+    }
+
+    function openModal() {
+        const now = new Date();
+        const formattedTime = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        const timeInput = document.querySelector('input[name="incident_time"]');
+        if (timeInput && !timeInput.value) timeInput.value = formattedTime;
+        document.getElementById('customModalOverlay').classList.add('show');
+    }
+
+    function closeCustomModal() {
+        document.getElementById('customModalOverlay').classList.remove('show');
+    }
+
+    // 메뉴 토글
+    function toggleMenu(btn) {
+        event.stopPropagation();
+        const menu = btn.nextElementSibling;
+        const isVisible = menu.style.display === 'block';
+        document.querySelectorAll('.menu-dropdown').forEach(m => m.style.display = 'none');
+        menu.style.display = isVisible ? 'none' : 'block';
+    }
+
+    document.addEventListener('click', function() {
+        document.querySelectorAll('.menu-dropdown').forEach(m => m.style.display = 'none');
+    });
+    
+    document.addEventListener('keydown', function(event) {
+        if (event.key === "Escape") closeCustomModal();
+    });
+</script>
+{% endblock %}

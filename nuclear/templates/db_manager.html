@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row h-100">
+    <div class="col-md-2 border-end bg-white py-3">
+        <h5 class="mb-3 text-secondary">📁 테이블 목록</h5>
+        <div class="list-group">
+            {% for table in tables %}
+            <button type="button" class="list-group-item list-group-item-action" 
+                    onclick="setSelectQuery('{{ table }}')">
+                {{ table }}
+            </button>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="col-md-10 py-3">
+        <h4 class="mb-3">⚡ SQL 쿼리 실행기</h4>
+        
+        <form method="POST" id="queryForm">
+            <div class="mb-2">
+                <textarea name="sql_query" id="sqlEditor" class="form-control font-monospace" 
+                          rows="5" placeholder="SELECT * FROM personnel WHERE ...">{{ sql_query }}</textarea>
+            </div>
+            <div class="d-flex justify-content-between mb-3">
+                <div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearEditor()">지우기</button>
+                    <span class="text-muted small ms-2">* 데이터를 클릭하면 UPDATE문이 생성됩니다.</span>
+                </div>
+                <button type="submit" class="btn btn-primary">▶ 실행 (Execute)</button>
+            </div>
+        </form>
+
+        {% if error_msg %}
+        <div class="alert alert-danger">{{ error_msg }}</div>
+        {% endif %}
+
+        {% if columns %}
+        <div class="card">
+            <div class="card-header bg-light">
+                <strong>조회 결과</strong> ({{ query_result|length if query_result else 0 }}건)
+            </div>
+            <div class="table-responsive" style="max-height: 500px; overflow: auto;">
+                <table class="table table-bordered table-hover table-sm mb-0" id="resultTable">
+                    <thead class="table-light sticky-top">
+                        <tr>
+                            {% for col in columns %}
+                            <th>{{ col }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in query_result %}
+                        <tr>
+                            {% for col in columns %}
+                            <td onclick="generateUpdateQuery('{{ columns[0] }}', '{{ row[0] }}', '{{ col }}', '{{ row[col] }}')" 
+                                style="cursor: pointer;" title="클릭하여 수정 쿼리 생성">
+                                {{ row[col] }}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                        {% if not query_result %}
+                        <tr><td colspan="{{ columns|length }}" class="text-center py-3">데이터가 없습니다.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    // 테이블 클릭 시 SELECT 쿼리 자동 입력
+    function setSelectQuery(tableName) {
+        const query = `SELECT * FROM ${tableName} ORDER BY id DESC LIMIT 100;`;
+        document.getElementById('sqlEditor').value = query;
+        // 바로 실행하려면 아래 주석 해제
+        // document.getElementById('queryForm').submit(); 
+    }
+
+    // 데이터 셀 클릭 시 UPDATE 쿼리 자동 생성
+    function generateUpdateQuery(idColName, idValue, targetColName, currentValue) {
+        // 첫 번째 컬럼(보통 id)을 기준으로 WHERE 절을 만듭니다.
+        // 문자열 값인 경우 따옴표 처리를 해줍니다.
+        let val = currentValue;
+        
+        // 현재 테이블 이름 추측 (쿼리문에서 추출하거나, 가장 최근 선택된 테이블 사용)
+        // 여기서는 간단히 쿼리 실행창의 FROM 뒤에 있는 단어를 찾습니다.
+        let currentSql = document.getElementById('sqlEditor').value.toUpperCase();
+        let tableName = "테이블명";
+        
+        const match = currentSql.match(/FROM\s+([^\s;]+)/);
+        if (match) {
+            tableName = match[1];
+        }
+
+        const updateQuery = `UPDATE ${tableName}\nSET ${targetColName} = '${val}'\nWHERE ${idColName} = ${idValue};`;
+        
+        document.getElementById('sqlEditor').value = updateQuery;
+        document.getElementById('sqlEditor').focus();
+    }
+
+    function clearEditor() {
+        document.getElementById('sqlEditor').value = '';
+    }
+</script>
+{% endblock %}

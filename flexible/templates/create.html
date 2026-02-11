@@ -1,0 +1,408 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3">
+        <h4 class="mb-0 fw-bold">
+            {% if mode == 'edit' %}
+                🛠️ {{ form_def.title }} <span class="text-warning fs-6">설정 수정</span>
+            {% else %}
+                ✨ 새 시스템 만들기 <span class="text-primary fs-6">Form Builder</span>
+            {% endif %}
+        </h4>
+    </div>
+    <div class="card-body p-4">
+        
+        <form method="POST">
+            <div class="row mb-4">
+                <div class="col-12 mb-3">
+                    <label class="form-label fw-bold">시스템 이름 (Title)</label>
+                    <input type="text" name="title" class="form-control" 
+                           placeholder="예: 임직원 관리, 장비 현황" 
+                           value="{{ form_def.title if form_def else '' }}" required>
+                </div>
+				
+				<div class="col-12 mb-3">
+					<label class="form-label fw-bold small text-muted">시스템 성격 (Data Type)</label>
+					<div class="d-flex gap-3 border rounded p-2 bg-light">
+						<div class="form-check">
+							<input class="form-check-input" type="radio" name="category" id="cat_general" value="general"
+								   {% if not form_def or form_def.category == 'general' %}checked{% endif %}>
+							<label class="form-check-label" for="cat_general">
+								📄 일반 데이터 (Data) <small class="text-muted ms-1">- 업무 내역, 트랜잭션</small>
+							</label>
+						</div>
+						<div class="form-check">
+							<input class="form-check-input" type="radio" name="category" id="cat_standard" value="standard"
+								   {% if form_def and form_def.category == 'standard' %}checked{% endif %}>
+							<label class="form-check-label fw-bold text-primary" for="cat_standard">
+								🏷️ 기초 코드 (Master) <small class="text-muted ms-1">- 부서, 품목, 창고 등 기준 정보</small>
+							</label>
+						</div>
+					</div>
+				</div>
+
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small text-muted">목록 보기 방식</label>
+                    <div class="d-flex gap-3 mt-1">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="view_type" id="view_list" value="list"
+                                   {% if not form_def or form_def.view_type == 'list' %}checked{% endif %}>
+                            <label class="form-check-label" for="view_list">📋 리스트형 (Table)</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="view_type" id="view_card" value="card"
+                                   {% if form_def and form_def.view_type == 'card' %}checked{% endif %}>
+                            <label class="form-check-label" for="view_card">🪪 카드형 (Grid)</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small text-muted">페이지당 표시 개수</label>
+                    <input type="number" name="page_limit" class="form-control" style="max-width: 150px;"
+                           value="{{ form_def.page_limit if form_def and form_def.page_limit else 10 }}" 
+                           min="1" max="500" required>
+                </div>
+            </div>
+
+            <hr>
+
+            <h5 class="fw-bold mb-3">데이터 항목 정의</h5>
+            <div id="field-container">
+                {% if schema %}
+                    {% for field in schema %}
+                    <div class="card p-3 mb-3 bg-light field-row border-0 shadow-sm">
+                        <div class="row g-2 align-items-center">
+                            <div class="col-md-3">
+                                <label class="small fw-bold text-muted">
+                                    {% if loop.first %}📌 대표 항목 (필수){% else %}항목 이름{% endif %}
+                                </label>
+                                <input type="text" name="field_name[]" class="form-control" value="{{ field.key }}" required>
+                            </div>
+                            
+                            <div class="col-md-2">
+                                <label class="small fw-bold text-muted">타입</label>
+                                <select name="field_type[]" class="form-select" onchange="toggleRelationOptions(this)">
+                                    <option value="text" {% if field.type == 'text' %}selected{% endif %}>짧은 글 (Text)</option>
+                                    <option value="number" {% if field.type == 'number' %}selected{% endif %}>숫자 (Number)</option>
+                                    <option value="date" {% if field.type == 'date' %}selected{% endif %}>날짜 (Date)</option>
+                                    <option value="file" {% if field.type == 'file' %}selected{% endif %}>파일 첨부 (File)</option>
+                                    <option value="relation" {% if field.type == 'relation' %}selected{% endif %}>🔗 다른 폼 참조</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="small fw-bold text-muted">설정</label>
+                                <div class="d-flex gap-2 mt-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="field_required[]" value="{{ loop.index0 }}" 
+                                               {% if field.required or loop.first %}checked{% endif %}
+                                               {% if loop.first %}onclick="return false;" style="opacity: 0.5;"{% endif %}>
+                                        <label class="form-check-label small">필수</label>
+                                        {% if loop.first %}<input type="hidden" name="field_required[]" value="{{ loop.index0 }}">{% endif %}
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="field_unique[]" value="{{ loop.index0 }}" {% if field.unique %}checked{% endif %}>
+                                        <label class="form-check-label small">중복금지</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="field_show_list[]" value="{{ loop.index0 }}" 
+                                               {% if field.show_list or loop.first %}checked{% endif %}>
+                                        <label class="form-check-label small">목록노출</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-1 text-end">
+                                <label class="d-block small">&nbsp;</label>
+                                {% if not loop.first %}
+                                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeField(this)">🗑️</button>
+                                {% else %}
+                                    <button type="button" class="btn btn-light btn-sm" disabled>🔒</button>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mt-2" id="option-row" style="display: {% if field.type == 'relation' %}none{% else %}block{% endif %};">
+                            <input type="text" name="field_options[]" class="form-control form-control-sm bg-white" 
+                                   placeholder="선택 옵션 입력 (예: 남,여,기타 / 서울,경기,인천) - 콤마로 구분" 
+                                   value="{{ field.options }}">
+                        </div>
+
+                        <div class="relation-options mt-2 p-2 border rounded bg-white" style="display: {% if field.type == 'relation' %}block{% else %}none{% endif %};">
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <small class="text-muted">참조할 시스템</small>
+                                    <select name="field_target[]" class="form-select form-select-sm">
+                                        <option value="">-- 선택 --</option>
+                                        {% for f in all_forms %}
+                                            <option value="{{ f.id }}" {% if field.target_id|string == f.id|string %}selected{% endif %}>{{ f.title }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted">표시 방식</small>
+                                    <select name="field_widget[]" class="form-select form-select-sm">
+                                        <option value="select" {% if field.widget == 'select' %}selected{% endif %}>드롭다운 (Single)</option>
+                                        <option value="radio" {% if field.widget == 'radio' %}selected{% endif %}>라디오버튼 (Single)</option>
+                                        <option value="checkbox" {% if field.widget == 'checkbox' %}selected{% endif %}>체크박스 (Multi)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+
+            <button type="button" class="btn btn-outline-primary w-100 py-2 border-dashed fw-bold" onclick="addField()">
+                + 항목 추가하기
+            </button>
+
+            <hr class="my-4">
+
+            <h4 class="fw-bold mb-3">🔒 상세 권한 설정</h4>
+            <div class="card bg-light border-0 mb-4">
+                <div class="card-header">
+                    <ul class="nav nav-tabs card-header-tabs" id="authTab" role="tablist">
+                        <li class="nav-item">
+                            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-create" type="button">➕ 등록 권한</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-update" type="button">✏️ 수정 권한</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-delete" type="button">🗑️ 삭제 권한</button>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body bg-white border border-top-0">
+                    <div class="tab-content" id="authTabContent">
+                        
+                        {% macro user_checkboxes(name, saved_value) %}
+                            <div class="mb-2">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input check-all" type="checkbox" data-target="{{ name }}" 
+                                           {% if not saved_value %}checked{% endif %}>
+                                    <label class="form-check-label fw-bold small">전체 허용 (기본값)</label>
+                                </div>
+                            </div>
+                            <div class="row g-2 ps-2 border-start border-3">
+                                {% for user in all_users %}
+                                    <div class="col-6 col-md-4 col-lg-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input user-check-{{ name }}" type="checkbox" 
+                                                   name="{{ name }}" value="{{ user.id }}"
+                                                   {% if saved_value and user.id in saved_value.split(',') %}checked{% endif %}>
+                                            <label class="form-check-label small">{{ user.name }}</label>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            <div class="form-text small mt-2">* 선택하지 않으면 '전체 허용'이 됩니다. (관리자는 항상 가능)</div>
+                        {% endmacro %}
+
+                        <div class="tab-pane fade show active" id="tab-create">
+                            {{ user_checkboxes('access_create', form_def.access_create if form_def else '') }}
+                        </div>
+                        
+                        <div class="tab-pane fade" id="tab-update">
+                            {{ user_checkboxes('access_update', form_def.access_update if form_def else '') }}
+                        </div>
+                        
+                        <div class="tab-pane fade" id="tab-delete">
+                            {{ user_checkboxes('access_delete', form_def.access_delete if form_def else '') }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    {% if mode == 'edit' %}
+                        <button type="button" class="btn btn-outline-danger" onclick="confirmDeleteForm()">
+                            🗑️ 이 시스템 삭제
+                        </button>
+                    {% endif %}
+                </div>
+
+                <div class="d-flex gap-2">
+                    <a href="/" class="btn btn-secondary px-4">취소</a>
+                    <button type="submit" class="btn btn-primary px-4 fw-bold">💾 저장하기</button>
+                </div>
+            </div>
+        </form>
+        
+        {% if mode == 'edit' %}
+        <form id="deleteForm" action="/form/delete/{{ form_def.id }}" method="POST" style="display:none;"></form>
+        <script>
+            function confirmDeleteForm() {
+                if(confirm("⚠️ 경고: 이 시스템을 삭제하면 모든 데이터와 메뉴도 함께 삭제됩니다.\n\n정말로 진행하시겠습니까?")) {
+                    document.getElementById('deleteForm').submit();
+                }
+            }
+        </script>
+        {% endif %}
+        
+    </div>
+</div>
+
+<template id="field-template">
+    <div class="card p-3 mb-3 bg-light field-row border-0 shadow-sm">
+        <div class="row g-2 align-items-center">
+            <div class="col-md-3">
+                <label class="small fw-bold text-muted">항목 이름</label>
+                <input type="text" name="field_name[]" class="form-control" placeholder="항목명" required>
+            </div>
+            <div class="col-md-2">
+                <label class="small fw-bold text-muted">타입</label>
+                <select name="field_type[]" class="form-select" onchange="toggleRelationOptions(this)">
+                    <option value="text">짧은 글 (Text)</option>
+                    <option value="number">숫자 (Number)</option>
+                    <option value="date">날짜 (Date)</option>
+                    <option value="file">파일 (File)</option>
+                    <option value="relation">🔗 관계형</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="small fw-bold text-muted">설정</label>
+                <div class="d-flex gap-2 mt-1">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="field_required[]">
+                        <label class="form-check-label small">필수</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="field_unique[]">
+                        <label class="form-check-label small">중복금지</label>
+                    </div>
+                     <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="field_show_list[]" checked>
+                        <label class="form-check-label small">목록노출</label>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-1 text-end">
+                <label class="d-block small">&nbsp;</label>
+                <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeField(this)">🗑️</button>
+            </div>
+        </div>
+
+        <div class="mt-2" id="option-row">
+            <input type="text" name="field_options[]" class="form-control form-control-sm bg-white" 
+                   placeholder="선택 옵션 입력 (예: 남,여 / 서울,경기) - 콤마 구분">
+        </div>
+
+        <div class="relation-options mt-2 p-2 border rounded bg-white" style="display:none;">
+            <div class="row g-2">
+                <div class="col-6">
+                    <small>참조할 시스템</small>
+                    <select name="field_target[]" class="form-select form-select-sm">
+                        <option value="">-- 선택 --</option>
+                        {% for f in all_forms %}
+                            <option value="{{ f.id }}">{{ f.title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-6">
+                    <small>표시 방식</small>
+                    <select name="field_widget[]" class="form-select form-select-sm">
+                        <option value="select">드롭다운</option>
+                        <option value="radio">라디오버튼</option>
+                        <option value="checkbox">체크박스</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        if(document.querySelectorAll('.field-row').length === 0) {
+            addFirstField();
+        }
+        
+        // [NEW] 권한 설정 체크박스 동작 로직
+        document.querySelectorAll('.check-all').forEach(allBox => {
+            const targetName = allBox.dataset.target;
+            const subBoxes = document.querySelectorAll(`.user-check-${targetName}`);
+            
+            // 전체 체크박스 클릭 시 -> 하위 모두 해제
+            allBox.addEventListener('change', function() {
+                if(this.checked) {
+                    subBoxes.forEach(box => box.checked = false);
+                }
+            });
+
+            // 하위 체크박스 클릭 시 -> 전체 체크 해제
+            subBoxes.forEach(box => {
+                box.addEventListener('change', function() {
+                    if(this.checked) {
+                        allBox.checked = false;
+                    }
+                });
+            });
+        });
+    });
+
+    function addField() {
+        const tpl = document.getElementById('field-template');
+        const container = document.getElementById('field-container');
+        const clone = tpl.content.cloneNode(true);
+        
+        // 인덱스 처리 (체크박스용)
+        const idx = container.querySelectorAll('.field-row').length;
+        clone.querySelectorAll('input[type="checkbox"]').forEach(chk => {
+            chk.value = idx;
+        });
+        
+        container.appendChild(clone);
+    }
+
+    function addFirstField() {
+        addField();
+        const rows = document.querySelectorAll('.field-row');
+        const firstRow = rows[rows.length-1]; // 방금 추가된 행
+        
+        // 1. 라벨 변경
+        firstRow.querySelector('label').innerText = "📌 대표 항목 (필수)";
+        
+        // 2. 삭제 버튼 잠금
+        const delBtn = firstRow.querySelector('.btn-outline-danger');
+        if(delBtn) delBtn.parentElement.innerHTML = '<button type="button" class="btn btn-light btn-sm" disabled>🔒</button>';
+        
+        // 3. 필수 체크박스 강제
+        const reqChk = firstRow.querySelector('input[name="field_required[]"]');
+        if(reqChk) {
+            reqChk.checked = true;
+            reqChk.setAttribute("onclick", "return false;");
+            reqChk.style.opacity = "0.5";
+            // 히든 인풋 추가
+            const hidden = document.createElement("input");
+            hidden.type = "hidden";
+            hidden.name = "field_required[]";
+            hidden.value = reqChk.value;
+            reqChk.parentElement.appendChild(hidden);
+        }
+    }
+
+    function removeField(btn) {
+        btn.closest('.field-row').remove();
+        // 인덱스 재정렬 로직 생략
+    }
+
+    function toggleRelationOptions(select) {
+        const row = select.closest('.field-row');
+        const relOpt = row.querySelector('.relation-options');
+        const txtOpt = row.querySelector('#option-row');
+        
+        if (select.value === 'relation') {
+            relOpt.style.display = 'block';
+            txtOpt.style.display = 'none'; // 관계형일 땐 텍스트 옵션 숨김
+        } else {
+            relOpt.style.display = 'none';
+            txtOpt.style.display = 'block';
+        }
+    }
+</script>
+{% endblock %}

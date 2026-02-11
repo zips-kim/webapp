@@ -1,0 +1,15 @@
+{% extends "layout.html" %}
+{% block title %}페이지를 찾을 수 없습니다 - 유성쉘터{% endblock %}
+{% block content %}
+<div class="error-wrapper">
+    <div class="error-emoji">🤔</div>
+    <h1 class="error-title">페이지를 찾을 수 없습니다.</h1>
+    <p class="error-desc">
+        요청하신 페이지가 삭제되었거나 주소가 변경되었습니다.<br>
+        입력하신 주소가 정확한지 다시 한번 확인해 주세요.
+    </p>
+    <a href="/" class="btn-base btn-primary" style="padding: 15px 30px; font-size: 1.1rem; box-shadow: 0 4px 6px rgba(52, 152, 219, 0.3);">
+        🏠 메인 대시보드로 돌아가기
+    </a>
+</div>
+{% endblock %}

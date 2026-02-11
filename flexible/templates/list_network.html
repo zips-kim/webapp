@@ -1,0 +1,490 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center my-3">
+        <div>
+            <h4 class="fw-bold m-0">🕸️ 데이터 관계망 : {{ current_form.title }}</h4>
+            <small class="text-muted">안정화된 물리 엔진과 고급 분석 도구(히트맵, 클러스터링)가 적용되었습니다.</small>
+        </div>
+        <a href="/list/{{ current_form.id }}" class="btn btn-outline-secondary btn-sm">돌아가기</a>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-9">
+            <div class="card shadow-sm border-0" style="height: 85vh; min-height: 600px;">
+                <div class="card-body p-0 position-relative h-100">
+                    
+                    <div id="loading-bar" class="position-absolute top-50 start-50 translate-middle text-center" style="z-index: 10;">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <div class="mt-2 fw-bold text-muted">데이터 분석 중...</div>
+                    </div>
+
+                    <div id="mynetwork" style="width: 100%; height: 100%;"></div>
+                    
+                    <div id="node-popup" class="card position-absolute shadow" style="display:none; width: 320px; z-index: 100;">
+                        <div class="card-header py-2 d-flex justify-content-between align-items-center bg-light">
+                            <strong id="popup-title" class="text-primary">Title</strong>
+                            <button onclick="closePopup()" class="btn btn-close btn-sm"></button>
+                        </div>
+                        <div class="card-body py-3" id="popup-content" style="font-size: 0.9rem; line-height: 1.6;"></div>
+                        <div class="card-footer py-1 text-end">
+                            <a href="#" id="popup-link" class="btn btn-primary btn-sm py-0" style="font-size: 0.8em;">상세보기</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3">
+            <div class="card shadow-sm border-0 h-100" style="max-height: 85vh; display: flex; flex-direction: column;">
+                
+                <div class="card-header bg-white fw-bold">
+                    🛠️ 뷰어 제어판
+                </div>
+
+                <div class="card-body p-3 overflow-auto">
+                    
+                    <h6 class="fw-bold small text-muted mb-2">🔥 중요도 분석 (Heatmap)</h6>
+                    <div class="d-grid gap-2 mb-3">
+                        <button id="heatmapBtn" class="btn btn-outline-danger btn-sm fw-bold shadow-sm" onclick="toggleHeatmap()">
+                            🔥 히트맵 켜기 (OFF)
+                        </button>
+                    </div>
+
+                    <hr class="my-3">
+
+                    <h6 class="fw-bold small text-muted mb-2">📂 그룹핑 (Clustering)</h6>
+                    <div class="d-grid gap-2 mb-3">
+                        <button id="clusterBtn" class="btn btn-primary btn-sm fw-bold shadow-sm" onclick="toggleClustering()">
+                            🗂️ 폼 별로 뭉치기 (OFF)
+                        </button>
+                    </div>
+
+                    <hr class="my-3">
+
+                    <h6 class="fw-bold small text-muted mb-2">🔤 글자 크기 (Global)</h6>
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <span style="font-size:10px;">작게</span>
+                        <input type="range" class="form-range" min="10" max="40" value="16" 
+                               oninput="changeFontSize(this.value)">
+                        <span style="font-size:10px;">크게</span>
+                    </div>
+
+                    <hr class="my-3">
+
+                    <h6 class="fw-bold small text-muted mb-2">👁️ 데이터 표시 & 아이콘 크기</h6>
+                    <div class="d-grid gap-2 mb-2">
+                        <button class="btn btn-sm btn-outline-secondary py-1" onclick="toggleAll(true)">모두 보기</button>
+                        <button class="btn btn-sm btn-outline-secondary py-1" onclick="toggleAll(false)">모두 숨기기</button>
+                    </div>
+                    <div id="legend-container" class="vstack gap-2"></div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+
+<script>
+    // 🎨 색상 팔레트
+    const colorPalette = [
+        { bg: "#FF6B6B", border: "#c92a2a" }, // Red
+        { bg: "#4DABF7", border: "#1864ab" }, // Blue
+        { bg: "#51CF66", border: "#2b8a3e" }, // Green
+        { bg: "#FCC419", border: "#e67700" }, // Yellow
+        { bg: "#845EF7", border: "#5f3dc4" }, // Violet
+        { bg: "#FF922B", border: "#d9480f" }, // Orange
+        { bg: "#20C997", border: "#087f5b" }, // Teal
+        { bg: "#F06595", border: "#a61e4d" }, // Pink
+        { bg: "#94D82D", border: "#5c940d" }, // Lime
+        { bg: "#868e96", border: "#495057" }  // Grey
+    ];
+
+    // 🔷 모양 팔레트
+    const shapePalette = ['dot', 'square', 'triangle', 'diamond', 'star', 'hexagon'];
+
+    // CSS 매핑
+    const shapeCssMap = {
+        'dot': 'border-radius: 50%;',
+        'square': 'border-radius: 3px;',
+        'triangle': 'clip-path: polygon(50% 0%, 0% 100%, 100% 100%); background-color: currentColor;',
+        'diamond': 'clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); background-color: currentColor;',
+        'star': 'clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); background-color: currentColor;',
+        'hexagon': 'clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%); background-color: currentColor;'
+    };
+
+    let nodesView, network, nodesDataSet;
+    let activeGroups = new Set();
+    let groupColorMap = {};
+    let groupShapeMap = {};
+    let nodeDegree = {}; // 연결 수 저장
+    let maxDegree = 1;
+    let isClustered = false;
+    let isHeatmapMode = false;
+    let currentFontSize = 16;
+
+    document.addEventListener("DOMContentLoaded", function() {
+        try {
+            const rawNodes = {{ nodes | tojson }};
+            const rawLinks = {{ links | tojson }};
+            const formMap = {{ form_map | tojson }} || {};
+
+            if (!rawNodes || rawNodes.length === 0) {
+                document.getElementById('loading-bar').innerHTML = "<div class='text-danger'>데이터가 없습니다.</div>";
+                return;
+            }
+
+            // 1. 그룹 설정
+            const uniqueGroups = [...new Set(rawNodes.map(n => n.group))];
+            uniqueGroups.forEach((groupId, index) => {
+                groupColorMap[groupId] = colorPalette[index % colorPalette.length];
+                groupShapeMap[groupId] = shapePalette[index % shapePalette.length];
+                activeGroups.add(groupId); 
+            });
+
+            // 2. 범례 생성
+            renderLegend(uniqueGroups, formMap);
+
+            // 3. 연결 수 계산 (히트맵용)
+            rawLinks.forEach(link => {
+                nodeDegree[link.source] = (nodeDegree[link.source] || 0) + 1;
+                nodeDegree[link.target] = (nodeDegree[link.target] || 0) + 1;
+            });
+            maxDegree = Math.max(...Object.values(nodeDegree), 1);
+
+            // 4. 노드 데이터 생성
+            nodesDataSet = new vis.DataSet(
+                rawNodes.map(node => {
+                    const color = groupColorMap[node.group];
+                    const shape = groupShapeMap[node.group];
+                    const isPrimary = node.is_primary; 
+
+                    return {
+                        id: node.id,
+                        label: node.label,
+                        group: node.group,
+                        attributes: node.attributes,
+                        isPrimary: isPrimary,
+                        
+                        shape: shape,
+                        size: isPrimary ? 16 : 12, // 기본 크기
+                        
+                        color: { 
+                            background: color.bg, 
+                            border: isPrimary ? '#000000' : color.border, 
+                            highlight: { background: color.bg, border: '#000' }
+                        },
+                        borderWidth: isPrimary ? 2 : 1,
+                        font: { size: currentFontSize, color: '#333', strokeWidth: 2, strokeColor: '#fff' }
+                    };
+                })
+            );
+
+            // 5. DataView
+            nodesView = new vis.DataView(nodesDataSet, {
+                filter: function (node) { return activeGroups.has(node.group); }
+            });
+
+            // 6. 엣지 설정
+            const edges = new vis.DataSet(
+                rawLinks.map(link => {
+                    const isInbound = link.type === 'in'; 
+                    return {
+                        from: link.source, to: link.target,
+                        arrows: { to: { enabled: true, scaleFactor: 0.5 } },
+                        dashes: isInbound, 
+                        color: { color: isInbound ? '#adb5bd' : '#868e96', opacity: 0.8 },
+                        width: 1.5
+                    };
+                })
+            );
+
+            // 7. 네트워크 초기화 (안정화된 물리 엔진 적용)
+            const container = document.getElementById('mynetwork');
+            const data = { nodes: nodesView, edges: edges };
+            
+            const options = {
+                nodes: { shapeProperties: { interpolation: false } },
+                physics: {
+                    solver: 'forceAtlas2Based',
+                    forceAtlas2Based: {
+                        gravitationalConstant: -100, // 척력
+                        centralGravity: 0.01,
+                        springLength: 100,
+                        springConstant: 0.08,
+                        damping: 0.9,  // [핵심] 마찰력 증가 -> 흔들림 방지
+                        avoidOverlap: 0.1
+                    },
+                    maxVelocity: 30, // 속도 제한
+                    minVelocity: 0.1, // 정지 임계값
+                    stabilization: { enabled: true, iterations: 1000, fit: true }
+                },
+                interaction: { hover: true, tooltipDelay: 200, zoomView: true },
+                layout: { improvedLayout: false } 
+            };
+
+            network = new vis.Network(container, data, options);
+
+            network.on("stabilizationIterationsDone", function () {
+                document.getElementById('loading-bar').style.display = 'none';
+                network.fit(); 
+            });
+
+            // 클릭 이벤트
+            network.on("click", function (params) {
+                if (params.nodes.length > 0) {
+                    const nodeId = params.nodes[0];
+                    if (network.isCluster(nodeId)) return;
+
+                    const node = nodesDataSet.get(nodeId);
+                    const formInfo = formMap[node.group] || { title: 'Unknown' };
+                    
+                    const popup = document.getElementById('node-popup');
+                    const domPos = network.canvasToDOM(network.getPositions([nodeId])[nodeId]);
+                    
+                    document.getElementById('popup-title').innerText = formInfo.title;
+                    let content = node.attributes || "<span class='text-muted small'>표시할 속성이 없습니다.</span>";
+                    
+                    // 연결 정보 추가
+                    content += `<div class='mt-2 badge bg-primary'>연결: ${nodeDegree[nodeId] || 0}건</div>`;
+
+                    document.getElementById('popup-content').innerHTML = content;
+                    document.getElementById('popup-link').href = `/entry/edit/${nodeId}`;
+                    
+                    popup.style.display = 'block';
+                    popup.style.left = (domPos.x + 20) + 'px';
+                    popup.style.top = (domPos.y - 20) + 'px';
+                } else {
+                    closePopup();
+                }
+            });
+
+            network.on("doubleClick", function(params) {
+                if (params.nodes.length == 1 && network.isCluster(params.nodes[0])) {
+                    network.openCluster(params.nodes[0]);
+                }
+            });
+
+            network.on("dragStart", () => closePopup());
+            network.on("zoom", () => closePopup());
+
+        } catch (e) {
+            console.error(e);
+            document.getElementById('loading-bar').innerHTML = `<div class='text-danger'>오류: ${e.message}</div>`;
+        }
+    });
+
+    // --- 🔥 히트맵 기능 ---
+    function toggleHeatmap() {
+        const btn = document.getElementById('heatmapBtn');
+        isHeatmapMode = !isHeatmapMode;
+
+        if (isHeatmapMode) {
+            btn.classList.replace('btn-outline-danger', 'btn-danger');
+            btn.innerText = "🔥 히트맵 끄기 (ON)";
+            if(isClustered) toggleClustering();
+
+            const updates = [];
+            nodesDataSet.forEach(node => {
+                const degree = nodeDegree[node.id] || 0;
+                const ratio = degree / maxDegree; 
+                const newSize = 10 + (ratio * 30); 
+                const newColor = getHeatmapColor(ratio);
+                
+                updates.push({
+                    id: node.id,
+                    size: newSize,
+                    color: { 
+                        background: newColor, 
+                        border: newColor,
+                        highlight: { border: '#000', background: newColor }
+                    }
+                });
+            });
+            nodesDataSet.update(updates);
+        } else {
+            btn.classList.replace('btn-danger', 'btn-outline-danger');
+            btn.innerText = "🔥 히트맵 켜기 (OFF)";
+            
+            const updates = [];
+            nodesDataSet.forEach(node => {
+                const color = groupColorMap[node.group];
+                const slider = document.querySelector(`input[oninput*="changeGroupSize(${node.group}"]`);
+                const sliderVal = slider ? parseInt(slider.value) : 12;
+                const finalSize = node.isPrimary ? sliderVal * 1.5 : sliderVal;
+
+                updates.push({
+                    id: node.id,
+                    size: finalSize,
+                    color: { 
+                        background: color.bg, 
+                        border: node.isPrimary ? '#000000' : color.border,
+                        highlight: { background: color.bg, border: '#000' }
+                    }
+                });
+            });
+            nodesDataSet.update(updates);
+        }
+    }
+
+    function getHeatmapColor(value) {
+        const hue = (1 - value) * 240; 
+        return `hsl(${hue}, 100%, 50%)`;
+    }
+
+    // --- 🔤 글자 크기 ---
+    function changeFontSize(size) {
+        currentFontSize = parseInt(size);
+        const updates = [];
+        nodesDataSet.forEach(node => {
+            updates.push({ 
+                id: node.id, 
+                font: { size: currentFontSize, color: '#333', strokeWidth: 2, strokeColor: '#fff' } 
+            });
+        });
+        nodesDataSet.update(updates);
+    }
+
+    // --- 🔍 그룹별 아이콘 크기 ---
+    function changeGroupSize(groupId, size) {
+        if (isHeatmapMode) return;
+        const newSize = parseInt(size);
+        const updates = [];
+        nodesDataSet.forEach(node => {
+            if (node.group == groupId) {
+                const finalSize = node.isPrimary ? newSize * 1.5 : newSize;
+                updates.push({ id: node.id, size: finalSize });
+            }
+        });
+        nodesDataSet.update(updates);
+    }
+
+    // --- 🗂️ 클러스터링 ---
+    function toggleClustering() {
+        if(isHeatmapMode) toggleHeatmap(); 
+
+        const btn = document.getElementById('clusterBtn');
+        if (isClustered) {
+            const clusters = Object.keys(network.body.nodes).filter(id => network.isCluster(id));
+            clusters.forEach(id => network.openCluster(id));
+            isClustered = false;
+            btn.innerText = "🗂️ 폼 별로 뭉치기 (OFF)";
+            btn.classList.replace('btn-secondary', 'btn-primary');
+        } else {
+            activeGroups.forEach(groupId => {
+                const color = groupColorMap[groupId];
+                const shape = groupShapeMap[groupId]; 
+                const legendName = document.querySelector(`.legend-item[data-group='${groupId}'] .fw-bold`)?.innerText || "Group";
+                
+                const clusterOptions = {
+                    joinCondition: function(childOptions) { return childOptions.group == groupId; },
+                    clusterNodeProperties: {
+                        id: `cluster_${groupId}`,
+                        label: legendName,
+                        shape: shape, // 동일 모양 유지
+                        color: color.bg,
+                        size: 30,
+                        font: { size: currentFontSize + 4, color: '#333', bold: true },
+                        borderWidth: 2
+                    },
+                    processProperties: function(clusterOptions, childNodes) {
+                        clusterOptions.label = `${legendName}\n(${childNodes.length})`;
+                        return clusterOptions;
+                    }
+                };
+                network.cluster(clusterOptions);
+            });
+            isClustered = true;
+            btn.innerText = "📂 모두 펼치기 (ON)";
+            btn.classList.replace('btn-primary', 'btn-secondary');
+        }
+    }
+
+    // --- 범례 ---
+    function renderLegend(groups, formMap) {
+        const container = document.getElementById('legend-container');
+        container.innerHTML = "";
+
+        groups.forEach(groupId => {
+            const color = groupColorMap[groupId];
+            const shape = groupShapeMap[groupId];
+            const title = formMap[groupId] ? formMap[groupId].title : "Unknown";
+            
+            const shapeStyle = shapeCssMap[shape] || 'border-radius: 50%;';
+            const bgStyle = `background-color:${color.bg}; width:14px; height:14px; display:inline-block; margin-right:8px;`;
+
+            const btn = document.createElement("div");
+            btn.className = "legend-item p-2 border rounded bg-white shadow-sm mb-2";
+            btn.dataset.group = groupId;
+
+            btn.innerHTML = `
+                <div class="d-flex align-items-center justify-content-between mb-2 cursor-pointer" onclick="toggleGroup(${groupId}, this)">
+                    <div class="d-flex align-items-center" style="overflow:hidden;">
+                        <div style="${bgStyle} ${shapeStyle}"></div>
+                        <div class="flex-grow-1 text-truncate small fw-bold" title="${title}">${title}</div>
+                    </div>
+                    <div class="icon-eye text-muted small">👁️</div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span style="font-size:10px; color:#666;">크기</span>
+                    <input type="range" class="form-range form-range-sm" 
+                           min="5" max="40" value="12" 
+                           oninput="changeGroupSize(${groupId}, this.value)">
+                </div>
+            `;
+            container.appendChild(btn);
+        });
+    }
+
+    function toggleGroup(groupId, headerDiv) {
+        if(isClustered) toggleClustering();
+
+        groupId = parseInt(groupId);
+        const icon = headerDiv.querySelector('.icon-eye');
+        const parent = headerDiv.parentElement;
+
+        if (activeGroups.has(groupId)) {
+            activeGroups.delete(groupId);
+            parent.classList.add("bg-light", "opacity-75");
+            parent.classList.remove("bg-white", "shadow-sm");
+            icon.innerText = "❌";
+        } else {
+            activeGroups.add(groupId);
+            parent.classList.remove("bg-light", "opacity-75");
+            parent.classList.add("bg-white", "shadow-sm");
+            icon.innerText = "👁️";
+        }
+        nodesView.refresh();
+    }
+
+    function toggleAll(show) {
+        if(isClustered) toggleClustering();
+        
+        document.querySelectorAll('.legend-item').forEach(btn => {
+            const groupId = parseInt(btn.dataset.group);
+            const icon = btn.querySelector('.icon-eye');
+            const header = btn.querySelector('.cursor-pointer');
+
+            if (show) {
+                if(!activeGroups.has(groupId)) activeGroups.add(groupId);
+                btn.classList.remove("bg-light", "opacity-75");
+                btn.classList.add("bg-white", "shadow-sm");
+                icon.innerText = "👁️";
+            } else {
+                if(activeGroups.has(groupId)) activeGroups.delete(groupId);
+                btn.classList.add("bg-light", "opacity-75");
+                btn.classList.remove("bg-white", "shadow-sm");
+                icon.innerText = "❌";
+            }
+        });
+        nodesView.refresh();
+    }
+
+    function closePopup() {
+        document.getElementById('node-popup').style.display = 'none';
+    }
+</script>
+{% endblock %}

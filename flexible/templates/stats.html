@@ -1,0 +1,62 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>📊 통합 데이터 분석</h2>
+    <span class="badge bg-secondary">System Statistics</span>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white fw-bold">시스템별 데이터 비중</div>
+            <div class="card-body">
+                <canvas id="statsChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white fw-bold">상세 수치</div>
+            <ul class="list-group list-group-flush">
+                {% for i in range(labels|length) %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    {{ labels[i] }}
+                    <span class="badge bg-primary rounded-pill">{{ data[i] }} 건</span>
+                </li>
+                {% endfor %}
+                {% if not labels %}
+                    <li class="list-group-item text-center text-muted">데이터가 없습니다.</li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+    const ctx = document.getElementById('statsChart').getContext('2d');
+    const myChart = new Chart(ctx, {
+        type: 'doughnut', // 도넛 모양 차트
+        data: {
+            labels: {{ labels | tojson }},
+            datasets: [{
+                label: '데이터 건수',
+                data: {{ data | tojson }},
+                backgroundColor: [
+                    '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796'
+                ],
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+</script>
+{% endblock %}

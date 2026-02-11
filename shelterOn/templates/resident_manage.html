@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>주민 상세 관리 - 유성쉘터</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <style>
+        /* 컨테이너 오버라이드 (이 페이지 전용) */
+        .container { margin-top: 0 !important; width: 100%; max-width: 500px; padding: 0; }
+        .card.main-info { border-top: none; border-radius: 0 0 25px 25px; margin-top: 0; padding: 25px; }
+    </style>
+</head>
+<body class="flex-center-body bg-light-gray" style="align-items: flex-start; padding: 0;">
+    <div class="container">
+        {% if session.logged_in %}
+        <div class="user-bar">
+            <span>
+                <strong>{{ session.user_name if session.user_name else '관리자' }}</strong>님 
+                {% if session.role == 3 %}[{{ session.mission }}] @ {{ session.shelter_name }}{% endif %}
+            </span>
+            <a href="/logout" style="text-decoration: none; color: #e74c3c; font-weight: bold;">로그아웃</a>
+        </div>
+        {% endif %}
+
+        <div class="profile-header">
+            <div class="header-top">
+                <h1 class="profile-name">{{ res[1] }}</h1>
+                <button onclick="location.href='/'" class="header-close-btn">✕</button>
+            </div>
+            
+            <div style="margin-top: 10px;"> 
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 1.1rem; font-weight: 700; color: #ffffff;">{{ res[4] }} / {{ res[5] }}</span>
+                    <a href="tel:{{ res[2] }}" class="header-call-btn">📞 전화걸기</a>
+                </div>
+                {% if res[3] %}
+                <div style="margin: 15px 0; color: #ffffff; opacity: 0.9; font-size: 0.95rem;">
+                    📍 {{ res[3] }}
+                </div>
+                {% endif %}
+                <div class="special-note-box">
+                    <strong style="color: #ffffff;">⚠️ 특이사항</strong><br>
+                    <div style="margin-top: 5px; color: #ffffff; font-weight: 500;">
+                        {{ res[6] if res[6] else '없음' }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-shadow main-info mb-20">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <span style="font-weight: bold; color: #34495e;">🏛️ 대피 구호소</span>
+                <span class="status-badge status-{{ res[8] }}">
+                    {{ '입소완료' if res[8]=='IN' else '병원후송' if res[8]=='HOSPITAL' else '퇴소완료' }}
+                </span>
+            </div>
+            <div style="font-size: 1.1rem; color: #2c3e50; font-weight: 600; padding-left: 28px;">
+                {{ res[7] }}
+            </div>
+        </div>
+
+        <div class="card-shadow p-20">
+            <h4 class="mt-0">📦 구호물품 지급</h4>
+            <form action="/manage_distribute" method="post" style="display: flex; gap: 8px; margin-bottom: 15px;">
+                <input type="hidden" name="res_id" value="{{ res[0] }}">
+                <select name="sup_id" required style="flex: 2; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                    <option value="">+ 구호물품</option>
+                    {% for s in supplies %}
+                    <option value="{{ s.id }}">{{ s.name }} (재고: {{ s.quantity }})</option>
+                    {% endfor %}
+                </select>
+                <input type="number" name="quantity" value="1" min="1" style="flex: 0.5; padding: 10px; border: 1px solid #ddd; border-radius: 8px; text-align: center;">
+                <button type="submit" class="btn-base btn-primary" style="flex: 1;">지급</button>
+            </form>
+            
+            <div class="history-box">
+                <strong style="color: #2c3e50;">📜 구호물품 지급 이력</strong>
+                <ul class="history-list">
+                    {% for log in dist_logs %}
+                    <li class="history-item">
+                        <span>
+                            <strong>{{ log[0] }}</strong> {{ log[1] }}개 
+                            <small style="color: #999; margin-left: 5px;">({{ log[2][5:16] }})</small>
+                        </span>
+                        <a href="/cancel_resident_manage_distribute/{{ log[3] }}/{{ res[0] }}" class="cancel-btn-outline" onclick="return confirm('이 지급 내역을 취소하고 재고를 복구하시겠습니까?')">회수</a>
+                    </li>
+                    {% else %}
+                    <li style="padding: 10px 0; text-align: center; color: #999;">지급 기록이 없습니다.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <div class="card-shadow p-20" style="margin-top: 20px;">
+            <h4 class="mt-0" style="color: #2c3e50;">🕒 상태 변경 이력</h4>
+            <div class="history-box">
+                <ul class="history-list">
+                    {% for log in status_logs %}
+                    <li class="history-item">
+                        <span>
+                            {% if log[0] == 'IN' %}<b style="color: #27ae60;">[입소]</b>
+                            {% elif log[0] == 'HOSPITAL' %}<b style="color: #e67e22;">[병원후송]</b>
+                            {% elif log[0] == 'OUT' %}<b style="color: #7f8c8d;">[퇴소]</b>
+                            {% else %}<b>[{{ log[0] }}]</b>{% endif %}
+                            
+                            {{ log[1] }} <small style="color: #999; margin-left: 5px;">({{ log[2][5:16] }})</small>
+                        </span>
+                        {% if not loop.last %}
+                        <a href="/cancel_status_log/{{ log[3] }}/{{ res[0] }}" 
+                           class="cancel-btn-outline" style="color: #e53e3e; border-color: #e53e3e;"
+                           onclick="return confirm('이 상태 기록을 삭제하시겠습니까?')">삭제</a>
+                        {% else %}
+                        <small style="color: #ccc; font-size: 0.7rem;">(최초기록)</small>
+                        {% endif %}
+                    </li>
+                    {% else %}
+                    <li style="padding: 10px 0; text-align: center; color: #999;">변경 기록이 없습니다.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        
+        <div class="card-actions-grid p-20">
+            {% if res[8]=='IN' %}
+                <a href="/update_status/manage/{{ res[0] }}/{{ res[9] }}/HOSPITAL" onclick="return confirm('병원으로 이송 처리하시겠습니까?')" style="background: #e67e22;">🚑 병원 이송</a>
+                <a href="/update_status/manage/{{ res[0] }}/{{ res[9] }}/OUT" onclick="return confirm('퇴소 처리하시겠습니까?')" style="background: #95a5a6;">🏠 퇴소 처리</a>
+            {% else %}
+                <a href="/update_status/manage/{{ res[0] }}/{{ res[9] }}/IN" onclick="return confirm('구호소 복귀 처리하시겠습니까?')" style="background: #e67e22;">📍 구호소 복귀</a>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

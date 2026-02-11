@@ -1,0 +1,207 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <h2 class="fw-bold my-4">🛠️ 시스템 관리자 (DB)</h2>
+
+    <div class="row mb-4">
+        <div class="col-lg-3 mb-4 mb-lg-0">
+            <div class="card shadow-sm h-100">
+                <div class="card-header fw-bold bg-light">📂 테이블 목록</div>
+                <div class="list-group list-group-flush" style="max-height: 500px; overflow-y: auto;">
+                    {% for table in tables %}
+                        <a href="/admin?table={{ table }}" class="list-group-item list-group-item-action {% if current_table == table %}active{% endif %}">
+                            {{ table }}
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-9">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white fw-bold d-flex justify-content-between align-items-center">
+                    <span>
+                        {% if current_table %}
+                            📋 테이블 데이터: <span class="text-primary">{{ current_table }}</span>
+                            <small class="text-muted ms-2 fw-normal">(행을 클릭하면 UPDATE 쿼리가 생성됩니다)</small>
+                        {% else %}
+                            👈 왼쪽에서 테이블을 선택하세요
+                        {% endif %}
+                    </span>
+                    {% if current_table %}
+                        <span class="badge bg-secondary">최근 100건 조회</span>
+                    {% endif %}
+                </div>
+                <div class="card-body p-0">
+                    {% if current_table and columns %}
+                        <div class="table-responsive" style="max-height: 500px;">
+                            <table class="table table-sm table-hover mb-0" id="dataTable" style="font-size: 0.85rem; cursor: pointer;">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        {% for col in columns %}
+                                            <th data-column="{{ col }}">{{ col }}</th>
+                                        {% endfor %}
+                                        <th>관리</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in data %}
+                                        <tr onclick="makeUpdateQuery(this)">
+                                            {% for col in columns %}
+                                                <td class="text-truncate" style="max-width: 200px;">{{ row[col] }}</td>
+                                            {% endfor %}
+                                            <td onclick="event.stopPropagation()">
+                                                {% if current_table == 'users' %}
+                                                <form method="POST" action="/admin/delete_user/{{ row['id'] }}" onsubmit="return confirm('삭제하시겠습니까?');" style="display:inline;">
+                                                    <button class="btn btn-danger btn-sm py-0" style="font-size:0.7rem;">삭제</button>
+                                                </form>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% elif current_table %}
+                        <div class="p-3 text-center text-muted">데이터가 없습니다.</div>
+                    {% else %}
+                        <div class="d-flex align-items-center justify-content-center h-100 text-muted p-5">
+                            데이터를 보려면 테이블을 선택하세요.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-12 mb-4">
+            <div class="card shadow-sm border-0 bg-white">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <h5 class="m-0">💻 SQL 쿼리 실행</h5>
+                    <span class="badge bg-warning text-dark">주의: 데이터가 영구 삭제될 수 있습니다.</span>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="/admin">
+                        <div class="mb-3">
+                            <textarea id="sqlQueryInput" name="sql_query" class="form-control font-monospace bg-light" rows="6" placeholder="SELECT * FROM users WHERE..." style="font-size: 0.9rem;">{% if sql_query %}{{ sql_query }}{% elif current_table %}SELECT * FROM {{ current_table }} LIMIT 100{% endif %}</textarea>
+                        </div>
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearQuery()">지우기</button>
+                            <button type="submit" class="btn btn-primary">🚀 실행 (Execute)</button>
+                        </div>
+                    </form>
+
+                    <div class="mt-4">
+                        {% if query_error %}
+                            <div class="alert alert-danger shadow-sm">
+                                <strong>❌ 실행 실패:</strong><br>
+                                {{ query_error }}
+                            </div>
+                        {% endif %}
+
+                        {% if query_result %}
+                            {% if query_result.type == 'action' %}
+                                <div class="alert alert-success shadow-sm">
+                                    ✅ {{ query_result.message }}
+                                </div>
+                            {% elif query_result.type == 'select' %}
+                                <h6 class="fw-bold text-success mb-2">📊 실행 결과 ({{ query_result.rows|length }}건)</h6>
+                                <div class="table-responsive border rounded" style="max-height: 400px;">
+                                    <table class="table table-sm table-striped table-hover mb-0" style="font-size: 0.85rem;">
+                                        <thead class="table-light sticky-top">
+                                            <tr>
+                                                {% for col in query_result.cols %}
+                                                    <th>{{ col }}</th>
+                                                {% endfor %}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for row in query_result.rows %}
+                                                <tr>
+                                                    {% for col in query_result.cols %}
+                                                        <td>{{ row[col] }}</td>
+                                                    {% endfor %}
+                                                </tr>
+                                            {% endfor %}
+                                            {% if not query_result.rows %}
+                                                <tr><td colspan="100%" class="text-center py-3">결과 데이터가 없습니다.</td></tr>
+                                            {% endif %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 쿼리창 지우기
+function clearQuery() {
+    document.getElementById('sqlQueryInput').value = '';
+}
+
+// [핵심] 클릭한 행의 데이터를 기반으로 UPDATE 쿼리 생성
+function makeUpdateQuery(row) {
+    const tableHeaders = document.querySelectorAll('#dataTable thead th');
+    const cells = row.getElementsByTagName('td');
+    const currentTable = "{{ current_table }}"; // Jinja2 변수
+
+    if (!currentTable) return;
+
+    let setClauses = [];
+    let whereClause = "";
+
+    // 헤더와 셀 데이터를 매핑
+    for (let i = 0; i < cells.length; i++) {
+        // '관리' 컬럼 등 데이터가 아닌 컬럼은 제외
+        if (i >= tableHeaders.length) break;
+        
+        let colName = tableHeaders[i].innerText.trim();
+        if (colName === '관리') continue;
+
+        let cellValue = cells[i].innerText.trim();
+        
+        // SQL 싱글 쿼트 이스케이프 (' -> '')
+        let safeValue = cellValue.replace(/'/g, "''");
+
+        // id 컬럼은 WHERE 절로, 나머지는 SET 절로
+        if (colName === 'id') {
+            whereClause = `WHERE id = '${safeValue}'`;
+        } else {
+            setClauses.push(`${colName} = '${safeValue}'`);
+        }
+    }
+
+    // UPDATE 쿼리 조립
+    // id가 없으면 안전을 위해 WHERE 절을 비워두거나 주석 처리할 수 있음 (여기선 없으면 1=0으로 막음)
+    if (!whereClause) whereClause = "WHERE id = '???' -- ID 컬럼을 찾지 못했습니다.";
+
+    const query = `UPDATE ${currentTable} SET\n    ${setClauses.join(',\n    ')}\n${whereClause};`;
+
+    // 쿼리 입력창에 값 넣기
+    const queryBox = document.getElementById('sqlQueryInput');
+    queryBox.value = query;
+    
+    // 쿼리창으로 스크롤 부드럽게 이동
+    queryBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    
+    // 입력창 깜빡임 효과 (선택적 UX)
+    queryBox.style.backgroundColor = "#fff3cd";
+    setTimeout(() => { queryBox.style.backgroundColor = "#f8f9fa"; }, 500);
+}
+</script>
+
+<style>
+    /* 테이블 행 호버 효과 강화 */
+    #dataTable tbody tr:hover {
+        background-color: #e2e6ea !important;
+        cursor: pointer;
+    }
+</style>
+{% endblock %}

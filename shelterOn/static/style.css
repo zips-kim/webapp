@@ -1,0 +1,393 @@
+/* ==========================================================================
+   [1] 기본 레이아웃 & 네비게이션 (기존 유지)
+   ========================================================================== */
+body { 
+    font-family: 'Pretendard', -apple-system, sans-serif; 
+    margin: 0; 
+    font-size: 16px; 
+    background-color: #f8fafc; /* 기본 배경색 */
+}
+
+/* 하단 네비게이션 고정 */
+nav {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 65px;
+    background: #2c3e50;
+    display: flex;
+    z-index: 1000;
+}
+
+.nav-links {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+.nav-links a {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #ecf0f1;
+    text-decoration: none;
+    font-size: 11px;
+    transition: 0.2s;
+}
+
+.nav-links a.active {
+    background: #34495e;
+    color: #3498db;
+    border-bottom: 3px solid #3498db;
+}
+
+.nav-links a i, .nav-links a span.icon {
+    font-size: 18px;
+    margin-bottom: 2px;
+}
+
+/* 상단 유저바 고정 */
+.user-bar {
+    position: sticky;
+    top: 0;
+    background: #f8f9fa;
+    padding: 10px 15px;
+    border-bottom: 1px solid #dee2e6;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 1001;
+}
+
+/* 메인 컨테이너 */
+.container {
+    padding: 10px;
+    background: #f8fafc;
+    /* 하단 네비게이션 높이만큼 여백 확보 */
+    padding-bottom: 80px; 
+}
+
+/* ==========================================================================
+   [2] 공통 컴포넌트 (카드, 버튼, 입력창, 유틸리티)
+   ========================================================================== */
+/* 카드 스타일 */
+.card {
+    background: white;
+    border-radius: 12px;
+    border: none;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    margin-bottom: 15px;
+    padding: 15px; /* 기본 패딩 추가 */
+}
+
+.card-shadow {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    border: none;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+/* 텍스트 유틸리티 */
+.text-center { text-align: center; }
+.text-bold { font-weight: bold; }
+.mt-0 { margin-top: 0 !important; }
+.mb-5 { margin-bottom: 5px; }
+.mb-10 { margin-bottom: 10px; }
+.mb-15 { margin-bottom: 15px; }
+.mb-20 { margin-bottom: 20px; }
+.w-100 { width: 100%; }
+
+/* 중앙 정렬용 바디 (로그인, 에러페이지 등) */
+.flex-center-body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #f0f2f5;
+    margin: 0;
+    padding: 20px;
+    box-sizing: border-box;
+}
+.bg-light-gray { background-color: #f4f7f6; }
+
+/* 너비 제한 유틸리티 */
+.mw-450 { max-width: 450px; width: 100%; }
+.mw-500 { max-width: 500px; width: 100%; }
+.mw-1000 { max-width: 1000px; width: 100%; }
+
+/* 버튼 스타일 */
+.btn-base {
+    padding: 12px 15px;
+    border-radius: 8px;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    transition: opacity 0.2s;
+    text-align: center;
+}
+.btn-base:hover { opacity: 0.9; }
+.btn-sm { padding: 5px 12px; font-size: 12px; border-radius: 4px; }
+
+/* 버튼 색상 테마 */
+.btn-primary { background: #3498db; color: white; }
+.btn-success { background: #27ae60; color: white; }
+.btn-danger  { background: #e74c3c; color: white; }
+.btn-dark    { background: #2c3e50; color: white; }
+.btn-gray    { background: #95a5a6; color: white; }
+.btn-orange  { background: #e67e22; color: white; }
+.btn-download { background: #1890ff; color: white; padding: 10px 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+
+/* 입력 필드 */
+.search-input, .form-input { 
+    width: 100%; 
+    padding: 12px; 
+    border: 2px solid #3498db; 
+    border-radius: 8px; 
+    box-sizing: border-box; 
+    margin-bottom: 10px; 
+    font-size: 16px;
+}
+.form-input-light { border-color: #ddd; background: #f9f9f9; }
+.input-no-mb { margin-bottom: 0 !important; }
+
+/* 배지 */
+.badge {
+    background: #3498db;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+
+/* 테이블 스타일 */
+table { width: 100%; border-collapse: collapse; }
+th, td { border: 1px solid #eee; padding: 12px; text-align: left; }
+th { background-color: #f8f9fa; color: #333; }
+
+/* 모달 스타일 */
+.modal { 
+    display: none; 
+    position: fixed; 
+    z-index: 10000; 
+    left: 0; top: 0; 
+    width: 100%; height: 100%; 
+    background: rgba(0,0,0,0.6); 
+    backdrop-filter: blur(3px);
+}
+.modal-content { 
+    background: white; 
+    position: absolute;
+    top: 50%; left: 50%; 
+    transform: translate(-50%, -50%);
+    padding: 25px; 
+    border-radius: 15px; 
+    width: 90%; max-width: 450px; 
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    box-sizing: border-box;
+}
+.close {
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    line-height: 1;
+}
+
+/* ==========================================================================
+   [3] 페이지별: 로그인 (Login)
+   ========================================================================== */
+.login-tabs {
+    display: flex; margin-bottom: 20px; background: #eee; border-radius: 8px; padding: 5px;
+}
+.login-tab {
+    flex: 1; text-align: center; padding: 10px; cursor: pointer; border-radius: 6px; font-weight: bold; color: #666;
+}
+.login-tab.active {
+    background: white; color: #2c3e50; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+.staff-login-box {
+    background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #e9ecef; margin-bottom: 15px;
+}
+.staff-row { display: flex; gap: 5px; align-items: center; }
+.staff-label { width: 60px; font-weight: bold; padding-top: 5px; }
+
+/* ==========================================================================
+   [4] 페이지별: 대시보드 및 카드 그리드
+   ========================================================================== */
+.shelter-grid {
+    display: grid; 
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+}
+.mobile-card-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 15px;
+    padding: 10px 0;
+}
+.data-card {
+    background: white; border-radius: 15px; padding: 15px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #edf2f7;
+    display: flex; flex-direction: column; position: relative;
+}
+.card-title {
+    font-size: 1.2rem; font-weight: 700; color: #2d3748;
+    display: flex; align-items: center; gap: 8px;
+}
+.card-info {
+    font-size: 0.9rem; color: #718096; margin-bottom: 5px;
+}
+.card-badge {
+    position: absolute; top: 15px; right: 15px;
+    padding: 4px 10px; border-radius: 20px;
+    font-size: 0.8rem; font-weight: bold;
+}
+.card-actions {
+    margin-top: 15px; padding-top: 15px; border-top: 1px dashed #e2e8f0;
+    display: flex; gap: 10px;
+}
+.card-actions button, .card-actions a {
+    flex: 1; height: 36px; display: flex; align-items: center; justify-content: center;
+    border-radius: 8px; font-size: 14px; font-weight: bold;
+    text-decoration: none; border: none; cursor: pointer; box-sizing: border-box;
+}
+.btn-qr { background: #2c3e50; color: white; }
+.btn-delete-outline { background: white; color: #e53e3e; border: 1px solid #e53e3e !important; }
+
+/* ==========================================================================
+   [5] 페이지별: 로그 뷰어 (Logs)
+   ========================================================================== */
+.log-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.log-terminal {
+    background: #1e1e1e; color: #d4d4d4; padding: 20px; border-radius: 8px;
+    font-family: 'Consolas', monospace; font-size: 13px; height: 600px; overflow-y: auto;
+}
+.log-line { margin-bottom: 4px; border-bottom: 1px solid #333; padding-bottom: 4px; }
+.log-err { color: #f44336; }
+.log-warn { color: #ffeb3b; }
+.log-info { color: #4caf50; }
+
+/* ==========================================================================
+   [6] 페이지별: 주민 상세 관리 (Resident Manage)
+   ========================================================================== */
+.profile-header {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    padding: 30px 25px; color: white; position: relative; border-radius: 0;
+}
+.header-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; }
+.profile-name { font-size: 1.8rem; font-weight: 800; margin: 0; text-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.header-close-btn {
+    background: rgba(255, 255, 255, 0.2); border: none; color: white; width: 36px; height: 36px;
+    border-radius: 50%; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: 0.2s;
+}
+.header-close-btn:hover { background: rgba(255, 255, 255, 0.4); }
+.header-call-btn {
+    text-decoration: none; background: #ffffff; color: #4facfe; padding: 8px 18px; border-radius: 50px;
+    font-size: 0.85rem; font-weight: 800; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-left: auto;
+}
+.special-note-box {
+    margin: 15px 0; background: rgba(255, 248, 225, 0.2); padding: 15px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.3);
+}
+.status-badge { padding: 5px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; }
+.status-IN { background: #e3fcef; color: #00875a; }
+.status-HOSPITAL { background: #fff0f0; color: #de350b; }
+.status-OUT { background: #f4f5f7; color: #5e6c84; }
+.history-list { margin: 8px 0 0 0; padding: 0; list-style: none; }
+.history-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #eee; }
+.history-box { font-size: 0.85rem; color: #666; background: #f8f9fa; padding: 10px; border-radius: 8px; }
+.cancel-btn-outline {
+    background: white; color: #e67e22; border: 1px solid #e67e22; padding: 2px 8px; border-radius: 4px;
+    font-size: 0.75rem; font-weight: bold; text-decoration: none;
+}
+.card-actions-grid { display: flex; gap: 10px; margin-top: 15px; }
+.card-actions-grid a {
+    flex: 1; text-align: center; padding: 15px; border-radius: 12px; color: white; font-weight: bold; text-decoration: none;
+}
+
+/* ==========================================================================
+   [7] 페이지별: 근무자 선택 (Staff Select)
+   ========================================================================== */
+.shelter-group {
+    margin-bottom: 20px; background: white; border-radius: 12px;
+    overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+.shelter-header {
+    background: #2c3e50; color: white; padding: 12px 15px;
+    font-weight: bold; display: flex; justify-content: space-between; align-items: center;
+}
+.duty-item {
+    padding: 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;
+    cursor: pointer; transition: background 0.2s;
+}
+.duty-item:hover { background: #f8f9fa; }
+.duty-badge { background: #e3f2fd; color: #1565c0; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; }
+.empty-state { text-align: center; background: white; padding: 40px; border-radius: 12px; color: #999; }
+
+/* ==========================================================================
+   [8] 페이지별: 파일 업로드 (Upload)
+   ========================================================================== */
+.backup-card { background: #f0f7ff; border: 1px solid #bae7ff; }
+.upload-dropzone { border: 2px dashed #3498db; background: white; }
+.flash-msg-box {
+    background: #d4edda; color: #155724; padding: 15px; border-radius: 8px;
+    margin-bottom: 20px; border: 1px solid #c3e6cb; font-weight: bold; text-align: center;
+}
+.file-list { list-style: none; padding: 0; border-top: 1px solid #eee; }
+.file-item { padding: 12px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+
+/* ==========================================================================
+   [9] 페이지별: 유저 정보 (User Info)
+   ========================================================================== */
+.user-card {
+    text-align: center; padding: 30px; border-radius: 20px; background: white;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-top: 8px solid #27ae60;
+}
+.qr-container {
+    display: flex; justify-content: center; margin: 10px 0; padding: 10px; background: white;
+}
+.qr-container img { border: 5px solid #f8fafc; border-radius: 10px; }
+.info-detail-box {
+    background: #f8fafc; padding: 20px; border-radius: 15px; text-align: left;
+    margin-bottom: 20px; border: 1px solid #e2e8f0;
+}
+.info-label { color: #718096; font-size: 0.85rem; display: block; }
+.info-value { font-weight: 800; font-size: 1.1rem; color: #3498db; margin-bottom: 15px; }
+
+/* ==========================================================================
+   [10] 페이지별: 입소 등록 (User Reg)
+   ========================================================================== */
+.reg-tab-group { display: flex; gap: 10px; margin-bottom: 20px; }
+.reg-tab-btn {
+    flex: 1; padding: 12px; border-radius: 8px; border: 2px solid #ddd;
+    background: white; color: #666; font-weight: bold; cursor: pointer; transition: 0.2s;
+}
+.reg-tab-btn.active { border-color: #3498db; background: #3498db; color: white; }
+.reg-info-box {
+    background: #fff4e6; padding: 15px; border-radius: 10px; border: 1px solid #ffd8a8; margin-bottom: 20px; display: none;
+}
+.reg-textarea {
+    width: 100%; height: 80px; padding: 10px; border: 2px solid #3498db; border-radius: 8px;
+    box-sizing: border-box; font-family: inherit;
+}
+
+/* ==========================================================================
+   [11] 에러 페이지 (404, 500)
+   ========================================================================== */
+.error-wrapper { text-align: center; padding: 100px 20px; }
+.error-emoji { font-size: 80px; margin-bottom: 20px; }
+.error-title { color: #2c3e50; font-size: 2.5rem; margin-bottom: 10px; }
+.error-desc { color: #7f8c8d; font-size: 1.1rem; margin-bottom: 40px; }
+.error-code-box {
+    background: #fdf2f2; border: 1px solid #e74c3c; color: #c0392b;
+    padding: 15px; border-radius: 8px; display: inline-block; max-width: 800px; width: 100%;
+    text-align: left; margin-bottom: 40px; font-family: monospace; font-size: 0.9rem; overflow-x: auto;
+}

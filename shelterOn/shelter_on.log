@@ -1,0 +1,271 @@
+[2026-02-04 15:25:03,564] INFO in app: 🔑 로그인 성공: zips (admin)
+[2026-02-04 15:36:31,989] WARNING in app: 404 Error: http://127.0.0.1:7870/map.html
+[2026-02-04 15:51:21,056] WARNING in app: ⚠️ DB Action 'clear' executed by 관리자
+[2026-02-04 15:51:23,510] WARNING in app: ⚠️ DB Action 'init' executed by 관리자
+[2026-02-04 16:08:59,055] WARNING in app: ⚠️ DB Action 'clear' executed by 관리자
+[2026-02-04 16:09:01,479] WARNING in app: ⚠️ DB Action 'init' executed by 관리자
+[2026-02-04 16:22:26,634] WARNING in app: ⚠️ DB Action 'clear' executed by 관리자
+[2026-02-04 16:22:29,094] WARNING in app: ⚠️ DB Action 'init' executed by 관리자
+[2026-02-04 16:23:54,359] WARNING in app: ⚠️ DB Action 'clear' executed by 관리자
+[2026-02-04 16:23:56,557] WARNING in app: ⚠️ DB Action 'init' executed by 관리자
+[2026-02-04 16:48:52,499] ERROR in app: 다중 경로 요청 에러: HTTPSConnectionPool(host='apis-navi.kakaomobility.com', port=443): Max retries exceeded with url: /v1/origins/directions (Caused by SSLError(SSLCertVerificationError(1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate in certificate chain (_ssl.c:1081)')))
+[2026-02-04 16:49:02,812] ERROR in app: 다중 경로 요청 에러: HTTPSConnectionPool(host='apis-navi.kakaomobility.com', port=443): Max retries exceeded with url: /v1/origins/directions (Caused by SSLError(SSLCertVerificationError(1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate in certificate chain (_ssl.c:1081)')))
+[2026-02-04 16:50:47,476] ERROR in app: 다중 길찾기 실패: {'code': -2, 'msg': 'invalid priority'}
+[2026-02-04 16:58:01,740] ERROR in app: API 응답 형식 오류: {'code': -2, 'msg': 'radius is mandatory'}
+[2026-02-04 16:58:35,331] ERROR in app: API 응답 형식 오류: {'code': -2, 'msg': 'radius is mandatory'}
+[2026-02-04 17:00:13,992] ERROR in app: API 응답 형식 오류: {'code': -2, 'msg': 'radius should not be greater than 10000'}
+[2026-02-04 17:01:33,578] ERROR in app: API 응답 형식 오류: {'code': -2, 'msg': 'radius should not be greater than 10000'}
+[2026-02-04 17:06:10,749] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.388754613586,36.4231717143954&end=127.344304681993,36.3785615442503
+[2026-02-04 17:06:10,821] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.383833520426,36.4404447186006&end=127.344304681993,36.3785615442503
+[2026-02-04 17:06:10,852] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.375090855501,36.4206504350903&end=127.344304681993,36.3785615442503
+[2026-02-04 17:06:10,885] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.387927536828,36.4246234754992&end=127.344304681993,36.3785615442503
+[2026-02-04 17:06:10,917] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.387455664323,36.4238900186013&end=127.344304681993,36.3785615442503
+[2026-02-04 17:06:10,947] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.383957737314,36.421893164273&end=127.344304681993,36.3785615442503
+[2026-02-04 17:06:10,977] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.389345068095,36.426839057735&end=127.344304681993,36.3785615442503
+[2026-02-04 17:06:11,007] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.392641556135,36.4254785005705&end=127.344304681993,36.3785615442503
+[2026-02-04 17:06:11,039] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.382156466153,36.41881903336&end=127.344304681993,36.3785615442503
+[2026-02-04 17:06:11,071] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.38263887634,36.4288980873294&end=127.344304681993,36.3785615442503
+[2026-02-04 17:06:11,103] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.380446935189,36.4294714729169&end=127.344304681993,36.3785615442503
+[2026-02-04 17:06:11,156] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.381897061683,36.4328568374107&end=127.344304681993,36.3785615442503
+[2026-02-04 17:06:11,187] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.386752497636,36.4315126237609&end=127.344304681993,36.3785615442503
+[2026-02-04 17:06:11,217] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.387196049068,36.4351130415814&end=127.344304681993,36.3785615442503
+[2026-02-04 17:06:11,295] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.384957850912,36.4382719127091&end=127.344304681993,36.3785615442503
+[2026-02-04 17:06:11,332] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.381470003543,36.4378161264206&end=127.344304681993,36.3785615442503
+[2026-02-04 17:06:11,368] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.383525769264,36.4338419038754&end=127.344304681993,36.3785615442503
+[2026-02-04 17:08:50,528] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.388754613586,36.4231717143954&end=127.344304681993,36.3785615442503
+[2026-02-04 17:08:50,563] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.383833520426,36.4404447186006&end=127.344304681993,36.3785615442503
+[2026-02-04 17:08:50,600] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.375090855501,36.4206504350903&end=127.344304681993,36.3785615442503
+[2026-02-04 17:08:50,633] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.387927536828,36.4246234754992&end=127.344304681993,36.3785615442503
+[2026-02-04 17:08:50,668] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.387455664323,36.4238900186013&end=127.344304681993,36.3785615442503
+[2026-02-04 17:08:50,699] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.383957737314,36.421893164273&end=127.344304681993,36.3785615442503
+[2026-02-04 17:08:50,734] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.389345068095,36.426839057735&end=127.344304681993,36.3785615442503
+[2026-02-04 17:08:50,769] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.392641556135,36.4254785005705&end=127.344304681993,36.3785615442503
+[2026-02-04 17:08:50,802] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.382156466153,36.41881903336&end=127.344304681993,36.3785615442503
+[2026-02-04 17:08:50,833] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.38263887634,36.4288980873294&end=127.344304681993,36.3785615442503
+[2026-02-04 17:08:50,867] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.380446935189,36.4294714729169&end=127.344304681993,36.3785615442503
+[2026-02-04 17:08:50,897] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.381897061683,36.4328568374107&end=127.344304681993,36.3785615442503
+[2026-02-04 17:08:50,929] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.386752497636,36.4315126237609&end=127.344304681993,36.3785615442503
+[2026-02-04 17:08:50,961] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.387196049068,36.4351130415814&end=127.344304681993,36.3785615442503
+[2026-02-04 17:08:50,999] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.384957850912,36.4382719127091&end=127.344304681993,36.3785615442503
+[2026-02-04 17:08:51,032] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.381470003543,36.4378161264206&end=127.344304681993,36.3785615442503
+[2026-02-04 17:08:51,065] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.383525769264,36.4338419038754&end=127.344304681993,36.3785615442503
+[2026-02-04 17:38:11,485] ERROR in app: 카카오 경로 실패: {'code': -2, 'msg': '경유지가 유효하지 않습니다.'}
+[2026-02-05 11:21:25,271] WARNING in app: 404 Error: http://127.0.0.1:7870/favicon.ico
+[2026-02-05 11:21:45,159] INFO in app: 🔑 로그인 성공: zips (admin)
+[2026-02-05 13:09:23,129] ERROR in app: Unhandled Exception[오류]: (sqlite3.OperationalError) no such column: shelters.latitude
+[SQL: SELECT shelters.id AS shelters_id, shelters.name AS shelters_name, shelters.address AS shelters_address, shelters.phone AS shelters_phone, shelters.area AS shelters_area, shelters.capacity AS shelters_capacity, shelters.is_active AS shelters_is_active, shelters.latitude AS shelters_latitude, shelters.longitude AS shelters_longitude 
+FROM shelters 
+WHERE shelters.is_active = 1]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+[2026-02-05 13:09:26,838] ERROR in app: Unhandled Exception[오류]: (sqlite3.OperationalError) no such column: shelters.latitude
+[SQL: SELECT count(*) AS count_1 
+FROM (SELECT shelters.id AS shelters_id, shelters.name AS shelters_name, shelters.address AS shelters_address, shelters.phone AS shelters_phone, shelters.area AS shelters_area, shelters.capacity AS shelters_capacity, shelters.is_active AS shelters_is_active, shelters.latitude AS shelters_latitude, shelters.longitude AS shelters_longitude 
+FROM shelters 
+WHERE shelters.is_active = 1) AS anon_1]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+[2026-02-05 13:09:29,729] ERROR in app: Unhandled Exception[오류]: (sqlite3.OperationalError) no such column: shelters.latitude
+[SQL: SELECT shelters.id AS shelters_id, shelters.name AS shelters_name, shelters.address AS shelters_address, shelters.phone AS shelters_phone, shelters.area AS shelters_area, shelters.capacity AS shelters_capacity, shelters.is_active AS shelters_is_active, shelters.latitude AS shelters_latitude, shelters.longitude AS shelters_longitude 
+FROM shelters 
+WHERE shelters.is_active = 1]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+[2026-02-05 13:09:37,960] ERROR in app: Unhandled Exception[오류]: (sqlite3.OperationalError) no such column: shelters.latitude
+[SQL: SELECT shelters.id AS shelters_id, shelters.name AS shelters_name, shelters.address AS shelters_address, shelters.phone AS shelters_phone, shelters.area AS shelters_area, shelters.capacity AS shelters_capacity, shelters.is_active AS shelters_is_active, shelters.latitude AS shelters_latitude, shelters.longitude AS shelters_longitude 
+FROM shelters 
+WHERE shelters.is_active = 1]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+[2026-02-05 13:09:39,340] ERROR in app: Unhandled Exception[오류]: (sqlite3.OperationalError) no such column: shelters.latitude
+[SQL: SELECT shelters.id AS shelters_id, shelters.name AS shelters_name, shelters.address AS shelters_address, shelters.phone AS shelters_phone, shelters.area AS shelters_area, shelters.capacity AS shelters_capacity, shelters.is_active AS shelters_is_active, shelters.latitude AS shelters_latitude, shelters.longitude AS shelters_longitude 
+FROM shelters 
+WHERE shelters.is_active = 1]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+[2026-02-05 13:09:39,997] ERROR in app: Unhandled Exception[오류]: (sqlite3.OperationalError) no such column: shelters.latitude
+[SQL: SELECT shelters.id AS shelters_id, shelters.name AS shelters_name, shelters.address AS shelters_address, shelters.phone AS shelters_phone, shelters.area AS shelters_area, shelters.capacity AS shelters_capacity, shelters.is_active AS shelters_is_active, shelters.latitude AS shelters_latitude, shelters.longitude AS shelters_longitude 
+FROM shelters 
+WHERE shelters.is_active = 1]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+[2026-02-05 13:10:33,617] INFO in app: 🔑 로그인 성공: zips (admin)
+[2026-02-05 13:11:19,051] WARNING in app: ⚠️ DB Action 'clear' executed by 관리자
+[2026-02-05 13:11:21,857] WARNING in app: ⚠️ DB Action 'init' executed by 관리자
+[2026-02-05 13:22:24,187] WARNING in app: ⚠️ DB Action 'clear' executed by 관리자
+[2026-02-05 13:22:26,887] WARNING in app: ⚠️ DB Action 'init' executed by 관리자
+[2026-02-05 13:30:55,498] WARNING in app: ⚠️ DB Action 'clear' executed by 관리자
+[2026-02-05 13:30:58,218] WARNING in app: ⚠️ DB Action 'init' executed by 관리자
+[2026-02-05 13:40:43,767] WARNING in app: ⚠️ DB Action 'clear' executed by 관리자
+[2026-02-05 13:40:45,633] ERROR in app: ❌ DB Control Error: Error creating backref 'assembly_point' on relationship 'AssemblyPoint.destinations': property of that name exists on mapper 'Mapper[AssemblyDestination(assembly_destinations)]'
+[2026-02-05 13:41:05,986] ERROR in app: ❌ DB Control Error: One or more mappers failed to initialize - can't proceed with initialization of other mappers. Triggering mapper: 'Mapper[AssemblyPoint(assembly_points)]'. Original exception was: Error creating backref 'assembly_point' on relationship 'AssemblyPoint.destinations': property of that name exists on mapper 'Mapper[AssemblyDestination(assembly_destinations)]'
+[2026-02-05 13:41:16,026] ERROR in app: Unhandled Exception[오류]: One or more mappers failed to initialize - can't proceed with initialization of other mappers. Triggering mapper: 'Mapper[AssemblyPoint(assembly_points)]'. Original exception was: Error creating backref 'assembly_point' on relationship 'AssemblyPoint.destinations': property of that name exists on mapper 'Mapper[AssemblyDestination(assembly_destinations)]'
+[2026-02-05 13:41:24,966] WARNING in app: ⚠️ DB Action 'clear' executed by 관리자
+[2026-02-05 13:41:29,513] ERROR in app: ❌ DB Control Error: One or more mappers failed to initialize - can't proceed with initialization of other mappers. Triggering mapper: 'Mapper[AssemblyPoint(assembly_points)]'. Original exception was: Error creating backref 'assembly_point' on relationship 'AssemblyPoint.destinations': property of that name exists on mapper 'Mapper[AssemblyDestination(assembly_destinations)]'
+[2026-02-05 13:43:03,636] WARNING in app: ⚠️ DB Action 'clear' executed by 관리자
+[2026-02-05 13:43:06,208] ERROR in app: ❌ DB Control Error: Error creating backref 'assembly_point' on relationship 'AssemblyPoint.destinations': property of that name exists on mapper 'Mapper[AssemblyDestination(assembly_destinations)]'
+[2026-02-05 13:43:29,354] WARNING in app: ⚠️ DB Action 'init' executed by 관리자
+[2026-02-05 14:17:28,755] INFO in app: 🏛️ 구호소 상태 변경: 지족초등학교 -> False
+[2026-02-05 14:17:37,310] INFO in app: 🏛️ 구호소 상태 변경: 지족중학교 -> False
+[2026-02-05 14:17:39,536] INFO in app: 🏛️ 구호소 상태 변경: 지족고등학교 -> False
+[2026-02-05 14:17:47,881] INFO in app: 🏛️ 구호소 상태 변경: 노은초등학교 -> False
+[2026-02-05 14:17:50,607] INFO in app: 🏛️ 구호소 상태 변경: 노은중학교 -> False
+[2026-02-05 14:17:52,633] INFO in app: 🏛️ 구호소 상태 변경: 노은고등학교 -> False
+[2026-02-05 14:18:17,234] INFO in app: 🏛️ 구호소 상태 변경: 지족초등학교 -> True
+[2026-02-05 14:18:17,893] INFO in app: 🏛️ 구호소 상태 변경: 지족중학교 -> True
+[2026-02-05 14:18:18,774] INFO in app: 🏛️ 구호소 상태 변경: 지족고등학교 -> True
+[2026-02-05 14:18:19,342] INFO in app: 🏛️ 구호소 상태 변경: 노은초등학교 -> True
+[2026-02-05 14:18:20,124] INFO in app: 🏛️ 구호소 상태 변경: 노은고등학교 -> True
+[2026-02-05 14:18:21,000] INFO in app: 🏛️ 구호소 상태 변경: 노은중학교 -> True
+[2026-02-05 14:33:39,312] WARNING in app: ⚠️ DB Action 'clear' executed by 관리자
+[2026-02-05 14:33:43,197] WARNING in app: ⚠️ DB Action 'init' executed by 관리자
+[2026-02-05 14:55:47,159] INFO in app: 🏛️ 구호소 상태 변경: 지족초등학교 -> False
+[2026-02-05 14:55:48,896] INFO in app: 🏛️ 구호소 상태 변경: 지족중학교 -> False
+[2026-02-05 14:55:50,313] INFO in app: 🏛️ 구호소 상태 변경: 지족고등학교 -> False
+[2026-02-05 14:55:51,961] INFO in app: 🏛️ 구호소 상태 변경: 노은초등학교 -> False
+[2026-02-05 14:55:54,381] INFO in app: 🏛️ 구호소 상태 변경: 노은중학교 -> False
+[2026-02-05 14:55:56,421] INFO in app: 🏛️ 구호소 상태 변경: 노은고등학교 -> False
+[2026-02-05 14:55:58,275] INFO in app: 🏛️ 구호소 상태 변경: 유성중학교 -> False
+[2026-02-05 14:55:59,984] INFO in app: 🏛️ 구호소 상태 변경: 봉명초등학교 -> False
+[2026-02-05 14:56:01,709] INFO in app: 🏛️ 구호소 상태 변경: 봉명중학교 -> False
+[2026-02-05 14:56:04,328] INFO in app: 🏛️ 구호소 상태 변경: 상대초등학교 -> False
+[2026-02-05 14:56:07,051] INFO in app: 🏛️ 구호소 상태 변경: 원신흥초등학교 -> False
+[2026-02-05 14:56:10,879] INFO in app: 🏛️ 구호소 상태 변경: 흥도초등학교 -> False
+[2026-02-05 17:00:57,906] WARNING in app: ⚠️ DB Action 'clear' executed by 관리자
+[2026-02-05 17:01:00,715] WARNING in app: ⚠️ DB Action 'init' executed by 관리자
+[2026-02-05 17:03:21,647] WARNING in app: ⚠️ DB Action 'clear' executed by 관리자
+[2026-02-05 17:03:24,097] WARNING in app: ⚠️ DB Action 'init' executed by 관리자
+[2026-02-05 17:47:16,816] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.40673081700356,36.447792389468454&end=127.33183156404738,36.3354138696835&way=127.412678,36.385742|127.358526,36.359139
+[2026-02-05 17:50:28,960] WARNING in app: ⚠️ DB Action 'clear' executed by 관리자
+[2026-02-05 17:50:31,911] WARNING in app: ⚠️ DB Action 'init' executed by 관리자
+[2026-02-05 17:50:50,182] WARNING in app: 404 Error: http://127.0.0.1:7870/get_kakao_route?start=127.375128,36.420748&end=127.343324,36.379005&way=
+[2026-02-05 18:02:10,617] WARNING in app: ⚠️ DB Action 'clear' executed by 관리자
+[2026-02-05 18:02:13,603] WARNING in app: ⚠️ DB Action 'init' executed by 관리자
+[2026-02-06 09:09:08,087] WARNING in app: 404 Error: http://127.0.0.1:7870/favicon.ico
+[2026-02-06 09:09:16,380] INFO in app: 🔑 로그인 성공: zips (admin)
+[2026-02-06 10:11:27,094] WARNING in app: ⚠️ DB Action 'clear' executed by 관리자
+[2026-02-06 10:11:29,657] WARNING in app: ⚠️ DB Action 'init' executed by 관리자
+[2026-02-06 10:42:52,647] WARNING in app: ⚠️ DB Action 'clear' executed by 관리자
+[2026-02-06 10:42:55,839] WARNING in app: ⚠️ DB Action 'init' executed by 관리자
+[2026-02-06 10:50:52,506] INFO in app: 🔑 로그인 성공: monitor (staff)
+[2026-02-06 10:51:22,599] INFO in app: 🔑 로그인 성공: admin (admin)
+[2026-02-06 10:51:54,364] INFO in app: 🔑 로그인 성공: monitor (admin)
+[2026-02-06 11:22:58,211] ERROR in app: Details Error: 'ResidentLog' object has no attribute 'created_at'
+[2026-02-06 13:16:25,488] WARNING in app: ⚠️ DB Action 'clear' executed by 관리자
+[2026-02-06 13:16:28,247] WARNING in app: ⚠️ DB Action 'init' executed by 관리자
+[2026-02-06 13:49:27,686] INFO in app: 🔑 로그인 성공: admin (admin)
+[2026-02-06 13:49:50,184] INFO in app: 🏛️ 구호소 상태 변경: 지족초등학교 -> True
+[2026-02-06 13:49:53,999] INFO in app: 🏛️ 구호소 상태 변경: 지족초등학교 -> False
+[2026-02-06 13:55:29,253] INFO in app: 🔄 OUT 변경: 홍길동 (처리: 관리자)
+[2026-02-06 14:18:47,031] INFO in app: 🔄 IN 변경: 홍길동 (처리: 관리자)
+[2026-02-06 16:02:01,580] INFO in app: 🏛️ 구호소 상태 변경: 지족초등학교 -> True
+[2026-02-06 16:02:05,397] INFO in app: 🏛️ 구호소 상태 변경: 지족초등학교 -> False
+[2026-02-06 16:02:12,858] INFO in app: 🏛️ 구호소 상태 변경: 지족초등학교 -> True
+[2026-02-06 16:02:16,051] INFO in app: 🏛️ 구호소 상태 변경: 지족초등학교 -> False
+[2026-02-06 16:02:29,440] INFO in app: 📦 물품 입고: 구호세트(남/대) (ID:1, 변동:2) by 관리자
+[2026-02-06 16:02:33,158] INFO in app: 📦 물품 조정(차감): 구호세트(남/대) (ID:1, 변동:-2) by 관리자
+[2026-02-07 08:51:14,768] WARNING in app: 404 Error: http://localhost:7870/favicon.ico
+[2026-02-07 08:51:22,031] INFO in app: 🔑 로그인 성공: zips (admin)
+[2026-02-07 10:13:46,107] WARNING in app: 404 Error: http://localhost:7870/api/resident/undefined/info
+[2026-02-07 10:14:00,730] WARNING in app: 404 Error: http://localhost:7870/api/resident/undefined/info
+[2026-02-07 10:14:22,732] WARNING in app: 404 Error: http://localhost:7870/api/resident/undefined/info
+[2026-02-07 10:14:27,797] WARNING in app: 404 Error: http://localhost:7870/api/resident/undefined/info
+[2026-02-07 10:14:31,252] WARNING in app: 404 Error: http://localhost:7870/api/resident/undefined/info
+[2026-02-07 10:14:47,184] WARNING in app: 404 Error: http://localhost:7870/api/resident/undefined/info
+[2026-02-07 10:51:20,675] WARNING in app: 404 Error: http://localhost:7870/api/resident/undefined/info
+[2026-02-07 10:51:22,029] WARNING in app: 404 Error: http://localhost:7870/api/resident/undefined/info
+[2026-02-07 10:51:22,385] WARNING in app: 404 Error: http://localhost:7870/api/resident/undefined/info
+[2026-02-07 10:51:23,226] WARNING in app: 404 Error: http://localhost:7870/api/resident/undefined/info
+[2026-02-07 10:51:24,306] WARNING in app: 404 Error: http://localhost:7870/api/resident/undefined/info
+[2026-02-07 10:51:24,905] WARNING in app: 404 Error: http://localhost:7870/api/resident/undefined/info
+[2026-02-07 10:51:25,153] WARNING in app: 404 Error: http://localhost:7870/api/resident/undefined/info
+[2026-02-07 11:15:54,903] ERROR in app: 물품 지급 오류: invalid literal for int() with base 10: 'undefined'
+[2026-02-07 11:15:54,903] ERROR in app: Unhandled Exception[오류]: invalid literal for int() with base 10: 'undefined'
+[2026-02-07 11:45:35,448] INFO in app: 🔄 OUT 변경: test (처리: 관리자)
+[2026-02-08 17:41:36,313] WARNING in app: 404 Error: http://localhost:7870/favicon.ico
+[2026-02-08 17:41:44,491] INFO in app: 🔑 로그인 성공: zips (admin)
+[2026-02-09 08:09:07,766] WARNING in app: 404 Error: http://localhost:7870/favicon.ico
+[2026-02-09 08:09:17,726] INFO in app: 🔑 로그인 성공: zips (admin)
+[2026-02-09 09:30:47,373] ERROR in app: Unhandled Exception[오류]: name 'Incident' is not defined
+[2026-02-09 09:31:06,601] ERROR in app: Unhandled Exception[오류]: name 'Incident' is not defined
+[2026-02-09 09:31:25,027] ERROR in app: Unhandled Exception[오류]: name 'Incident' is not defined
+[2026-02-09 09:32:50,534] WARNING in app: 404 Error: http://localhost:7870/db_explore
+[2026-02-09 09:33:08,015] WARNING in app: ⚠️ DB Action 'clear' executed by 관리자
+[2026-02-09 09:33:11,734] WARNING in app: ⚠️ DB Action 'init' executed by 관리자
+[2026-02-09 09:33:19,304] ERROR in app: Unhandled Exception[오류]: name 'Incident' is not defined
+[2026-02-09 09:33:26,016] ERROR in app: Unhandled Exception[오류]: name 'Incident' is not defined
+[2026-02-09 09:34:43,872] ERROR in app: Unhandled Exception[오류]: name 'Incident' is not defined
+[2026-02-09 09:35:37,698] ERROR in app: Unhandled Exception[오류]: name 'Incident' is not defined
+[2026-02-09 09:37:03,655] INFO in app: 🚩 사고 선택됨: test
+[2026-02-09 09:37:35,399] WARNING in app: 404 Error: http://localhost:7870/ㅡ메
+[2026-02-09 10:18:22,809] ERROR in app: Unhandled Exception[오류]: Could not build url for endpoint 'manage_template'. Did you mean 'admin_template' instead?
+[2026-02-09 10:20:45,641] ERROR in app: Unhandled Exception[오류]: Could not build url for endpoint 'manage_template'. Did you mean 'admin_template' instead?
+[2026-02-09 10:21:24,974] ERROR in app: Unhandled Exception[오류]: Could not build url for endpoint 'manage_template'. Did you mean 'admin_template' instead?
+[2026-02-09 10:23:09,555] INFO in app: 🚩 사고 선택됨: test
+[2026-02-09 10:38:48,411] INFO in app: 🚩 사고 선택됨: test
+[2026-02-09 10:41:04,174] INFO in app: 🚩 사고 선택됨: test
+[2026-02-09 10:41:55,996] INFO in app: 🚩 사고 선택됨: test
+[2026-02-09 10:44:54,462] ERROR in app: Unhandled Exception[오류]: Encountered unknown tag 'session'. Jinja was looking for the following tags: 'elif' or 'else' or 'endif'. The innermost block that needs to be closed is 'if'.
+[2026-02-09 10:48:35,869] INFO in app: 🚩 사고 선택됨: test
+[2026-02-09 11:00:54,503] INFO in app: 🚩 사고 선택됨: test
+[2026-02-09 11:28:25,993] WARNING in app: 404 Error: http://localhost:7870/map
+[2026-02-09 11:29:09,207] WARNING in app: 404 Error: http://localhost:7870/map
+[2026-02-09 11:29:12,884] WARNING in app: 404 Error: http://localhost:7870/map
+[2026-02-09 11:29:29,105] WARNING in app: 404 Error: http://localhost:7870/map
+[2026-02-09 11:29:37,139] WARNING in app: 404 Error: http://localhost:7870/map
+[2026-02-09 11:29:58,967] WARNING in app: 404 Error: http://localhost:7870/map
+[2026-02-09 13:08:22,572] WARNING in app: 404 Error: http://localhost:7870/map
+[2026-02-09 14:01:48,201] INFO in app: 🚩 사고 선택됨: 테스트사고
+[2026-02-09 14:01:52,059] WARNING in app: 404 Error: http://localhost:7870/map
+[2026-02-09 14:07:24,726] ERROR in app: 물품 지급 오류: (sqlite3.IntegrityError) NOT NULL constraint failed: distribution_logs.incident_id
+[SQL: INSERT INTO distribution_logs (incident_id, resident_id, supply_id, quantity, distributed_at) VALUES (?, ?, ?, ?, ?)]
+[parameters: (None, '4', '8', 1, '2026-02-09 14:07:24.725253')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+[2026-02-09 14:07:25,302] WARNING in app: 404 Error: http://localhost:7870/api/map/refresh_data?incident_id2
+[2026-02-09 14:07:25,364] WARNING in app: 404 Error: http://localhost:7870/api/map/refresh_data?incident_id1
+[2026-02-09 14:07:56,921] ERROR in app: 물품 지급 오류: (sqlite3.IntegrityError) NOT NULL constraint failed: distribution_logs.incident_id
+[SQL: INSERT INTO distribution_logs (incident_id, resident_id, supply_id, quantity, distributed_at) VALUES (?, ?, ?, ?, ?)]
+[parameters: (None, '4', '8', 1, '2026-02-09 14:07:56.898660')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+[2026-02-09 14:07:57,499] WARNING in app: 404 Error: http://localhost:7870/api/map/refresh_data?incident_id1
+[2026-02-09 14:07:57,545] WARNING in app: 404 Error: http://localhost:7870/api/map/refresh_data?incident_id2
+[2026-02-09 14:08:42,719] ERROR in app: 물품 지급 오류: (sqlite3.IntegrityError) NOT NULL constraint failed: distribution_logs.incident_id
+[SQL: INSERT INTO distribution_logs (incident_id, resident_id, supply_id, quantity, distributed_at) VALUES (?, ?, ?, ?, ?)]
+[parameters: (None, '4', '8', 1, '2026-02-09 14:08:42.718460')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+[2026-02-09 14:08:43,300] WARNING in app: 404 Error: http://localhost:7870/api/map/refresh_data?incident_id=2
+[2026-02-09 14:08:43,349] WARNING in app: 404 Error: http://localhost:7870/api/map/refresh_data?incident_id=1
+[2026-02-09 14:09:20,820] ERROR in app: 물품 지급 오류: (sqlite3.IntegrityError) NOT NULL constraint failed: distribution_logs.incident_id
+[SQL: INSERT INTO distribution_logs (incident_id, resident_id, supply_id, quantity, distributed_at) VALUES (?, ?, ?, ?, ?)]
+[parameters: (None, '4', '8', 1, '2026-02-09 14:09:20.820036')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+[2026-02-09 14:09:21,128] WARNING in app: 404 Error: http://localhost:7870/api/map/refresh_data?incident_id=2
+[2026-02-09 14:48:24,735] ERROR in app: Unhandled Exception[오류]: (sqlite3.OperationalError) no such column: staff_logs.incident_id
+[SQL: SELECT count(*) AS count_1 
+FROM (SELECT staff_logs.id AS staff_logs_id, staff_logs.user_name AS staff_logs_user_name, staff_logs.user_phone AS staff_logs_user_phone, staff_logs.dept AS staff_logs_dept, staff_logs.mission AS staff_logs_mission, staff_logs.incident_id AS staff_logs_incident_id, staff_logs.shelter_id AS staff_logs_shelter_id, staff_logs.login_time AS staff_logs_login_time, staff_logs.logout_time AS staff_logs_logout_time 
+FROM staff_logs 
+WHERE staff_logs.shelter_id = ? AND staff_logs.logout_time IS NULL) AS anon_1]
+[parameters: (1,)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+[2026-02-09 14:51:23,646] INFO in app: 🚩 사고 선택됨: 1111
+[2026-02-09 14:51:37,161] INFO in app: 🚩 사고 선택됨: test
+[2026-02-09 14:51:43,146] WARNING in app: 404 Error: http://localhost:7870/ㅡ메
+[2026-02-09 14:51:48,252] WARNING in app: 404 Error: http://localhost:7870/map
+[2026-02-09 14:51:48,543] WARNING in app: 404 Error: http://localhost:7870/map
+[2026-02-09 15:58:54,164] INFO in app: 🚩 사고 선택됨: test
+[2026-02-09 16:02:14,532] ERROR in app: Unhandled Exception[오류]: index() got an unexpected keyword argument 'incident_id'
+[2026-02-09 16:04:01,985] ERROR in app: Unhandled Exception[오류]: index() got an unexpected keyword argument 'incident_id'
+[2026-02-09 16:05:14,387] WARNING in app: 404 Error: http://localhost:7870/map
+[2026-02-09 16:05:16,517] WARNING in app: 404 Error: http://localhost:7870/ㅡ메
+[2026-02-09 16:08:35,284] ERROR in app: Unhandled Exception[오류]: index() got an unexpected keyword argument 'incident_id'
+[2026-02-09 17:00:39,790] ERROR in app: Unhandled Exception[오류]: Entity namespace for "duty_orders" has no property "logout_time"
+[2026-02-09 17:55:40,236] WARNING in app: 404 Error: http://localhost:7870/
+[2026-02-09 17:55:40,918] WARNING in app: 404 Error: http://localhost:7870/favicon.ico
+[2026-02-09 17:58:20,048] WARNING in app: 404 Error: http://localhost:7870/
+[2026-02-09 17:58:22,781] WARNING in app: 404 Error: http://localhost:7870/
+[2026-02-09 17:58:24,066] WARNING in app: 404 Error: http://localhost:7870/
+[2026-02-09 17:58:25,683] WARNING in app: 404 Error: http://localhost:7870/
+[2026-02-09 17:58:28,354] WARNING in app: 404 Error: http://localhost:7870/
+[2026-02-09 17:59:19,312] WARNING in app: 404 Error: http://localhost:7870/a/map
+[2026-02-09 18:08:17,241] WARNING in app: 404 Error: http://localhost:7870/
+[2026-02-09 18:10:41,368] WARNING in app: 404 Error: http://localhost:7870/resident
+[2026-02-10 08:55:33,226] WARNING in app: 404 Error: http://127.0.0.1:7870/
+[2026-02-10 08:55:33,805] WARNING in app: 404 Error: http://127.0.0.1:7870/
+[2026-02-10 08:55:34,093] WARNING in app: 404 Error: http://127.0.0.1:7870/favicon.ico
+[2026-02-10 09:08:26,954] WARNING in app: 404 Error: http://localhost:7870/favicon.ico
+[2026-02-10 11:20:17,229] INFO in app: 🚩 사고 선택됨: 2026년 방사능방재 합동훈련
+[2026-02-10 11:20:17,232] ERROR in app: Unhandled Exception[오류]: Could not build url for endpoint 'index'. Did you forget to specify values ['incident_id']?

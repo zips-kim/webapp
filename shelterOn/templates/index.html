@@ -1,0 +1,212 @@
+{% extends "layout.html" %}
+
+{% block title %}🏠 유성쉘터 (Shelter-On){% endblock %}
+
+{% block content %}
+    
+<style>
+    /* [수정] 모달이 처음부터 중앙에 뜨도록 위치 고정 */
+    .modal-content {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) !important; /* 항상 중앙 고정 */
+        margin: 0 !important;
+        animation: modalFade 0.25s ease-out;
+        max-width: 800px;
+        width: 95%;
+        border-radius: 20px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    
+    @keyframes modalFade {
+        from { opacity: 0; transform: translate(-50%, -45%) !important; }
+        to { opacity: 1; transform: translate(-50%, -50%) !important; }
+    }
+
+    .dashboard-card {
+        background: white;
+        border-radius: 16px;
+        padding: 20px;
+        transition: all 0.2s ease;
+        border: 1px solid #e2e8f0;
+    }
+    .dashboard-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+        border-color: #3498db;
+    }
+</style>
+
+<div class="dashboard-container" style="background: #f8fafc;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 15px; margin-bottom: 30px;">
+        {% set stats_info = [
+            ('👥 현재 이재민', stats[1], '#3498db', '/admin/resident', '명'),
+            ('📦 구호물품 확보량', stats[2], '#27ae60', '/admin/supply', '개'),
+            ('🏛️ 운영 구호소', stats[3], '#2c3e50', '/admin/shelter', '개소'),
+            ('🚩 운영 집결지', stats[4], '#e67e22', '/admin/assembly', '개소')
+        ] %}
+        {% for title, val, color, link, unit in stats_info %}
+        <a href="{{ link }}" style="text-decoration: none; color: inherit;">
+            <div style="background:white; padding:20px; border-radius:15px; border-bottom:4px solid {{ color }}; box-shadow:0 4px 6px rgba(0,0,0,0.03); text-align:center;">
+                <span style="color:#64748b; font-size:0.85rem; font-weight:600;">{{ title }}</span>
+                <div style="font-size:1.6rem; font-weight:800; color:#1e293b; margin-top:8px;">{{ val | format_number }}{{ unit }}</div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h3 style="margin: 0; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+            <span style="width: 4px; height: 18px; background: #3498db; border-radius: 2px;"></span>
+            구호소별 수용 현황
+        </h3>
+        <small style="color: #64748b;">(클릭 시 상세 정보 확인)</small>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px;">
+        {% for shelter in shelters %}
+        {% set percent = (shelter[3] / shelter[2] * 100) if shelter[2] > 0 else 0 %}
+        <div class="dashboard-card" onclick="showShelterDetail({{ shelter[0] }}, '{{ shelter[1] }}')" style="cursor: pointer;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+                <h4 style="margin: 0; color: #1e293b; font-size: 1.1rem;">{{ shelter[1] }}</h4>
+                <span style="font-size: 0.7rem; color: #3498db; border: 1px solid #3498db; padding: 2px 8px; border-radius: 10px; font-weight: bold;">DETAIL 🔍</span>
+            </div>
+            
+            <div style="margin-top: 10px;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 8px;">
+                    <span style="color: {% if percent > 90 %}#e74c3c{% elif percent > 70 %}#f39c12{% else %}#27ae60{% endif %}; font-weight: 700;">
+                        점유율 {{ percent | round(1) }}%
+                    </span>
+                    <span style="color: #64748b;">{{ shelter[3] }} / {{ shelter[2] }} 명</span>
+                </div>
+                <div style="width: 100%; background: #f1f5f9; height: 12px; border-radius: 6px; overflow: hidden;">
+                    <div style="width: {{ percent }}%; background: {% if percent > 90 %}#e74c3c{% elif percent > 70 %}#f1c40f{% else %}#2ecc71{% endif %}; height: 100%; transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);"></div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div id="shelterDetailModal" class="modal">
+    <div class="modal-content" style="
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) !important;
+        max-width: 950px;
+        width: 95%;
+        max-height: 85vh; /* [핵심] 화면 높이의 85%로 제한하여 헤더 유실 방지 */
+        padding: 0;
+        border: none;
+        overflow: hidden; /* 모달 자체 스크롤 방지 */
+        display: flex;
+        flex-direction: column; /* 헤더와 본문을 수직 배치 */
+        background: #f1f5f9;
+        border-radius: 15px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    ">
+        <div style="
+            background: #1e293b;
+            color: white;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0; /* 헤더 크기 고정 */
+            z-index: 10;
+        ">
+            <h2 id="modalShelterName" style="margin: 0; font-size: 1rem; letter-spacing: -0.5px;">🏛️ 구호소 상세 현황</h2>
+            <span class="close" onclick="closeModal('shelterDetailModal')" style="color: white; font-size: 28px; cursor: pointer; line-height: 1;">&times;</span>
+        </div>
+
+        <div style="padding: 15px; overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch;">
+            <div class="shelter-detail-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
+                
+                <div style="background: white; border-radius: 12px; border: 1px solid #e2e8f0; display: flex; flex-direction: column;">
+                    <div style="padding: 10px 15px; border-bottom: 1px solid #fee2e2; background: #fff5f5; border-radius: 12px 12px 0 0; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 5;">
+                        <h4 style="margin: 0; color: #991b1b; font-size: 0.85rem;">👥 이재민 명단</h4>
+                        <span id="countRes" style="background: #ef4444; color: white; padding: 1px 7px; border-radius: 10px; font-size: 0.7rem; font-weight: bold;">0</span>
+                    </div>
+                    <div id="listRes" style="padding: 5px;">
+                        </div>
+                </div>
+
+                <div style="background: white; border-radius: 12px; border: 1px solid #e2e8f0; display: flex; flex-direction: column;">
+                    <div style="padding: 10px 15px; border-bottom: 1px solid #dcfce7; background: #f0fdf4; border-radius: 12px 12px 0 0; position: sticky; top: 0; z-index: 5;">
+                        <h4 style="margin: 0; color: #166534; font-size: 0.85rem;">📦 물품 보유고</h4>
+                    </div>
+                    <div id="listSup" style="padding: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                        </div>
+                </div>
+
+                <div style="background: white; border-radius: 12px; border: 1px solid #e2e8f0; display: flex; flex-direction: column;">
+                    <div style="padding: 10px 15px; border-bottom: 1px solid #dbeafe; background: #eff6ff; border-radius: 12px 12px 0 0; position: sticky; top: 0; z-index: 5;">
+                        <h4 style="margin: 0; color: #1e40af; font-size: 0.85rem;">👷 근무자</h4>
+                    </div>
+                    <div id="listStaff" style="padding: 10px;">
+                        </div>
+                </div>
+
+            </div>
+        </div>
+        
+        <div style="padding: 10px 20px; background: white; border-top: 1px solid #e2e8f0; text-align: right; flex-shrink: 0;">
+            <button onclick="closeModal('shelterDetailModal')" style="background: #64748b; color: white; border: none; padding: 8px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.85rem; width: 100%;">확인 및 닫기</button>
+        </div>
+    </div>
+</div>
+
+<script>
+async function showShelterDetail(id, name) {
+    document.getElementById('modalShelterName').innerText = "🏛️ " + name + " 실시간 현황";
+    openModal('shelterDetailModal');
+    
+    document.getElementById('listRes').innerHTML = '<div style="text-align:center; padding:20px; color:#94a3b8; font-size:0.8rem;">로딩 중...</div>';
+    
+    try {
+        const response = await fetch(`/shelter_detail/${id}`);
+        const data = await response.json();
+        
+        // 1. 이재민: 한 줄에 정보 집약 (프로필 아이콘 크기 축소)
+        document.getElementById('countRes').innerText = data.residents.length;
+        document.getElementById('listRes').innerHTML = data.residents.map(r => `
+            <div style="padding: 8px 12px; border-bottom: 1px solid #f8fafc; display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.9rem;">👤</span>
+                    <span style="font-weight: 600; color: #334155; font-size: 0.85rem;">${r.name}</span>
+                    <span style="font-size: 0.75rem; color: #64748b;">(${r.gender.substring(0,1)})</span>
+                </div>
+                <span style="font-size: 0.7rem; color: #94a3b8; background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${r.log_time.substring(11,16)} 입소</span>
+            </div>
+        `).join('') || '<div style="text-align:center; padding:20px; color:#94a3b8;">입소자 없음</div>';
+
+        // 2. 물품: 그리드 레이아웃 활용 (한 줄에 2개씩)
+        document.getElementById('listSup').innerHTML = data.supplies.map(s => `
+            <div style="padding: 8px; background: #f8fafc; border-radius: 6px; border: 1px solid #f1f5f9; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                <span style="font-size: 0.75rem; color: #64748b; margin-bottom: 2px;">${s.item_name}</span>
+                <span style="font-weight: 800; color: #16a34a; font-size: 0.9rem;">${s.quantity}</span>
+            </div>
+        `).join('') || '<div style="grid-column: span 2; text-align:center; padding:20px; color:#94a3b8;">재고 없음</div>';
+
+        // 3. 근무자: 타임라인 형태로 간결화
+        document.getElementById('listStaff').innerHTML = data.staff.map(st => `
+            <div style="padding: 8px 10px; border-left: 2px solid #3b82f6; margin-left: 5px; margin-bottom: 8px; background: #f8fafc;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <span style="font-weight: 700; color: #1e3a8a; font-size: 0.8rem;">${st.user_name}</span>
+                    <span style="font-size: 0.65rem; color: #3b82f6; font-weight: 600;">${st.login_time.substring(11,16)}~</span>
+                </div>
+                <div style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">${st.dept} | ${st.mission}</div>
+            </div>
+        `).join('') || '<div style="text-align:center; padding:20px; color:#94a3b8;">근무자 없음</div>';
+
+    } catch(e) {
+        console.error(e);
+    }
+}
+</script>
+
+
+
+{% endblock %}

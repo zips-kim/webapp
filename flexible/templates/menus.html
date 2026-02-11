@@ -1,0 +1,387 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+
+{% macro render_sortable_item(items) %}
+    {% for item in items %}
+        <div class="list-group-item p-0 border-0 mb-1" data-id="{{ item.id }}">
+            <div class="menu-card d-flex align-items-center bg-white border rounded shadow-sm">
+                <div class="drag-handle px-3 py-2 text-muted" style="cursor: grab;">⋮⋮</div>
+                
+                <div class="flex-grow-1 py-2 cursor-pointer" 
+                     onclick='editMenu({{ item | tojson | forceescape }})' 
+                     style="cursor: pointer;" title="클릭해서 수정">
+                    
+                    <div class="d-flex align-items-center">
+                        <span class="me-2">
+                            {% if item.icon %}
+                                {{ item.icon }}
+                            {% elif item.type == 'folder' %}
+                                📂
+                            {% elif item.type == 'system' %}
+                                🔗
+                            {% else %}
+                                📄
+                            {% endif %}
+                        </span>
+                        <span class="fw-bold text-dark">{{ item.title }}</span>
+                        
+                        {% if item.type == 'system' %}
+                            <span class="badge bg-secondary ms-2" style="font-size:0.6em">Link</span>
+                        {% elif item.type == 'folder' %}
+                            <span class="badge bg-warning text-dark ms-2" style="font-size:0.6em">Folder</span>
+                        {% endif %}
+
+                        {% if item.allowed_users %}
+                            <span class="badge bg-danger ms-2" style="font-size:0.6em">🔒 제한됨</span>
+                        {% endif %}
+                    </div>
+                    <div class="text-muted small text-truncate" style="max-width: 300px;">
+                        {{ item.url }}
+                    </div>
+                </div>
+
+                <button class="btn btn-link text-secondary p-2" onclick='editMenu({{ item | tojson | forceescape }})'>
+                    ✏️
+                </button>
+            </div>
+            
+            <div class="list-group nested-sortable ms-4 mt-1 ps-2 border-start border-2 border-light" style="min-height: 5px;">
+                {% if item.children %}
+                    {{ render_sortable_item(item.children) }}
+                {% endif %}
+            </div>
+        </div>
+    {% endfor %}
+{% endmacro %}
+
+
+<div class="container-fluid px-4">
+    <h2 class="fw-bold my-4">⚙️ 메뉴 관리자</h2>
+    
+    <div class="row">
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm border-0 sticky-top" style="top: 20px; z-index: 100;">
+                <div class="card-header bg-white py-3">
+                    <h5 class="card-title fw-bold m-0 text-primary" id="editorTitle">➕ 새 메뉴 추가</h5>
+                </div>
+                <div class="card-body">
+                    <form action="/menus/save" method="POST" id="menuForm">
+                        <input type="hidden" name="menu_id" id="menu_id"> 
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small">메뉴 이름</label>
+                            <input type="text" name="title" id="input_title" class="form-control" placeholder="예: 프로젝트 관리" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small">연결 대상</label>
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="type" id="type_form" value="form" checked onchange="toggleType()">
+                                <label class="btn btn-outline-primary" for="type_form">📝 폼(데이터)</label>
+
+                                <input type="radio" class="btn-check" name="type" id="type_system" value="system" onchange="toggleType()">
+                                <label class="btn btn-outline-secondary" for="type_system">🔗 링크</label>
+
+                                <input type="radio" class="btn-check" name="type" id="type_folder" value="folder" onchange="toggleType()">
+                                <label class="btn btn-outline-warning text-dark" for="type_folder">📂 폴더</label>
+                            </div>
+                        </div>
+
+                        <div class="mb-3" id="area_form">
+                            <label class="form-label small text-muted">연결할 폼 선택</label>
+                            <select name="target_form_id" id="input_target_id" class="form-select">
+                                <option value="" disabled selected>-- 선택하세요 --</option>
+                                {% for form in forms %}
+                                    <option value="{{ form.id }}">{{ form.title }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3" id="area_system" style="display:none;">
+                            <label class="form-label small text-muted">URL 입력</label>
+                            <input type="text" name="url_manual" id="input_url" class="form-control" placeholder="/list/..." >
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small">아이콘 (선택)</label>
+                            <div class="input-group input-group-sm">
+                                <button class="btn btn-outline-secondary" type="button" onclick="toggleIconPicker()">😀 아이콘 선택</button>
+                                <input type="text" name="icon" id="input_icon" class="form-control" placeholder="직접 입력하거나 버튼 클릭">
+                            </div>
+                            <div id="iconPickerPanel" class="card mt-2 p-2 border-light bg-light shadow-sm" style="display: none;">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="small text-muted">클릭하면 입력됩니다</span>
+                                    <button type="button" class="btn-close btn-sm" onclick="toggleIconPicker()"></button>
+                                </div>
+                                <div id="iconGrid" class="d-flex flex-wrap gap-2 justify-content-center">
+                                    </div>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold small text-danger">🔒 접근 권한 (선택)</label>
+                            <div class="card bg-light border-0">
+                                <div class="card-body p-2" style="max-height: 150px; overflow-y: auto;">
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" id="check_all_users" onclick="toggleAllUsers(this)">
+                                        <label class="form-check-label small fw-bold" for="check_all_users">전체 사용자 (기본값)</label>
+                                    </div>
+                                    <div id="user_list_container">
+                                        {% for user in all_users %}
+                                            <div class="form-check">
+                                                <input class="form-check-input user-checkbox" type="checkbox" name="allowed_users" value="{{ user.id }}" id="user_{{ user.id }}">
+                                                <label class="form-check-label small" for="user_{{ user.id }}">
+                                                    {{ user.name }} ({{ user.id }})
+                                                </label>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-text small">
+                                * 아무도 선택하지 않으면 <strong>모든 사용자</strong>에게 보입니다.<br>
+                                * 관리자는 설정과 관계없이 항상 보입니다.
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary" id="btnSubmit">메뉴 생성</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnReset" onclick="resetForm()" style="display:none;">취소 (새로 만들기)</button>
+                        </div>
+                    </form>
+                    
+                    <form action="/menus/delete" method="POST" class="mt-2" onsubmit="return confirm('정말 삭제하시겠습니까?');">
+                        <input type="hidden" name="menu_id" id="delete_menu_id">
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-danger btn-sm" id="btnDelete" style="display:none;">🗑️ 이 메뉴 삭제</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <p class="text-muted m-0 small">드래그하여 순서와 구조를 변경한 후 <strong>[순서 저장]</strong>을 누르세요.</p>
+                <button id="saveOrderBtn" class="btn btn-success btn-sm px-3" onclick="saveTree()">
+                    💾 순서 저장하기
+                </button>
+            </div>
+
+            <div class="card shadow-sm border-0 rounded-3 bg-light">
+                <div class="card-body p-3">
+                    <div id="nested-menu-root" class="list-group list-group-flush nested-sortable pb-5" style="min-height: 300px;">
+                        {{ render_sortable_item(menu_tree) }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .sortable-ghost > .menu-card { background-color: #eef2ff !important; border: 2px dashed #4e73df !important; opacity: 0.8; }
+    .nested-sortable:empty { min-height: 40px; background-color: rgba(0,0,0,0.02); border: 1px dashed #dee2e6; margin-top: 5px; }
+    .menu-card:hover { border-color: #4e73df !important; }
+    /* 아이콘 버튼 스타일 */
+    .icon-btn { cursor: pointer; font-size: 1.2rem; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; }
+    .icon-btn:hover { background-color: #e9ecef; transform: scale(1.1); }
+</style>
+
+<script>
+    // 1. Sortable 초기화
+    function initNestedSortable() {
+        document.querySelectorAll('.nested-sortable').forEach(el => {
+            new Sortable(el, {
+                group: 'nested', animation: 150, handle: '.drag-handle',
+                ghostClass: 'sortable-ghost', fallbackOnBody: true, swapThreshold: 0.65
+            });
+        });
+    }
+    initNestedSortable();
+
+    // 2. 메뉴 타입 토글
+    function toggleType() {
+        const typeEl = document.querySelector('input[name="type"]:checked');
+        if (!typeEl) return;
+        const type = typeEl.value;
+        
+        const areaForm = document.getElementById('area_form');
+        const areaSystem = document.getElementById('area_system');
+        const inputUrl = document.getElementById('input_url');
+        const inputTarget = document.getElementById('input_target_id');
+
+        if (type === 'form') {
+            areaForm.style.display = 'block';
+            areaSystem.style.display = 'none';
+            inputUrl.required = false;
+            inputTarget.required = true;
+        } else if (type === 'system') {
+            areaForm.style.display = 'none';
+            areaSystem.style.display = 'block';
+            inputUrl.required = true;
+            inputTarget.required = false;
+        } else { // folder
+            areaForm.style.display = 'none';
+            areaSystem.style.display = 'none';
+            inputUrl.required = false;
+            inputTarget.required = false;
+        }
+    }
+    
+    // 아이콘 피커
+    const commonIcons = [
+        "📊", "📝", "📂", "⚙️", "🏠", "🔗", "👥", "📅", "🔍", "🗑️", 
+        "💾", "📈", "📋", "📦", "🔔", "✅", "❌", "🛒", "💰", "🎓",
+        "🏭", "🚚", "🏥", "🏢", "🔧", "📢", "💬", "📧", "🔐", "⭐"
+    ];
+
+    function toggleIconPicker() {
+        const picker = document.getElementById('iconPickerPanel');
+        const grid = document.getElementById('iconGrid');
+        
+        if (picker.style.display === 'none') {
+            picker.style.display = 'block';
+            if(grid.innerHTML.trim() === '') {
+                commonIcons.forEach(icon => {
+                    const btn = document.createElement('div');
+                    btn.textContent = icon;
+                    btn.className = 'btn btn-white border icon-btn';
+                    btn.onclick = function() {
+                        document.getElementById('input_icon').value = icon;
+                        picker.style.display = 'none';
+                    };
+                    grid.appendChild(btn);
+                });
+            }
+        } else {
+            picker.style.display = 'none';
+        }
+    }
+
+    // 전체 선택 토글
+    function toggleAllUsers(source) {
+        const checkboxes = document.querySelectorAll('.user-checkbox');
+        checkboxes.forEach(cb => cb.checked = false); 
+    }
+
+    document.querySelectorAll('.user-checkbox').forEach(cb => {
+        cb.addEventListener('change', function() {
+            document.getElementById('check_all_users').checked = false;
+        });
+    });
+
+    // 3. [수정됨] 수정 모드 진입 (안전 장치 추가)
+    window.editMenu = function(data) {
+        try {
+            console.log("Editing menu:", data); // 디버깅용 로그
+
+            document.getElementById('editorTitle').innerText = "✏️ 메뉴 수정";
+            document.getElementById('editorTitle').classList.remove('text-primary');
+            document.getElementById('editorTitle').classList.add('text-success');
+            document.getElementById('btnSubmit').innerText = "수정 내용 저장";
+            document.getElementById('btnSubmit').classList.replace('btn-primary', 'btn-success');
+            document.getElementById('btnReset').style.display = 'inline-block';
+            document.getElementById('btnDelete').style.display = 'block';
+
+            document.getElementById('menu_id').value = data.id;
+            document.getElementById('delete_menu_id').value = data.id;
+            document.getElementById('input_title').value = data.title;
+            document.getElementById('input_url').value = data.url;
+            document.getElementById('input_icon').value = data.icon || '';
+
+            let type = data.type || 'form';
+            if(type === 'link') type = 'system';
+            
+            // 라디오 버튼 체크
+            const radio = document.getElementById('type_' + type);
+            if(radio) radio.checked = true;
+            
+            // 폼 선택 로직
+            if (type === 'form' && data.url) {
+                const match = data.url.match(/\/list\/(\d+)/);
+                if (match) {
+                    document.getElementById('input_target_id').value = match[1];
+                }
+            }
+            
+            // 권한 체크박스 세팅
+            const checkboxes = document.querySelectorAll('.user-checkbox');
+            checkboxes.forEach(cb => cb.checked = false); 
+            
+            if (data.allowed_users && data.allowed_users.trim() !== "") {
+                const allowed = data.allowed_users.split(',');
+                allowed.forEach(uid => {
+                    const cb = document.getElementById('user_' + uid);
+                    if(cb) cb.checked = true;
+                });
+                document.getElementById('check_all_users').checked = false;
+            } else {
+                document.getElementById('check_all_users').checked = true;
+            }
+            
+            toggleType();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } catch (e) {
+            console.error("Menu edit error:", e);
+            alert("메뉴 정보를 불러오는 중 오류가 발생했습니다.\n" + e.message);
+        }
+    };
+
+    // 4. 초기화
+    window.resetForm = function() {
+        document.getElementById('menuForm').reset();
+        document.getElementById('menu_id').value = '';
+        document.getElementById('editorTitle').innerText = "➕ 새 메뉴 추가";
+        document.getElementById('editorTitle').classList.add('text-primary');
+        document.getElementById('editorTitle').classList.remove('text-success');
+        document.getElementById('btnSubmit').innerText = "메뉴 생성";
+        document.getElementById('btnSubmit').classList.replace('btn-success', 'btn-primary');
+        document.getElementById('btnReset').style.display = 'none';
+        document.getElementById('btnDelete').style.display = 'none';
+        document.getElementById('type_form').checked = true;
+        document.getElementById('iconPickerPanel').style.display = 'none';
+        
+        document.querySelectorAll('.user-checkbox').forEach(cb => cb.checked = false);
+        document.getElementById('check_all_users').checked = true;
+        
+        toggleType();
+    };
+
+    // 5. 트리 순서 저장
+    window.saveTree = function() {
+        const btn = document.getElementById('saveOrderBtn');
+        btn.innerHTML = '⏳ 저장 중...';
+        btn.disabled = true;
+        
+        const flatData = [];
+        function parseList(container, parentId) {
+            Array.from(container.children).forEach((item, index) => {
+                const id = item.getAttribute('data-id');
+                if (!id) return;
+                flatData.push({ id: id, parent_id: parentId, order: index });
+                const childContainer = item.querySelector('.nested-sortable');
+                if (childContainer) parseList(childContainer, id);
+            });
+        }
+        parseList(document.getElementById('nested-menu-root'), null);
+
+        fetch('/menus', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({tree: flatData})
+        })
+        .then(res => res.json())
+        .then(() => location.reload())
+        .catch(err => { alert('오류: ' + err); btn.disabled = false; });
+    };
+    
+    // 페이지 로드 시 초기화
+    toggleType();
+    document.getElementById('check_all_users').checked = true;
+</script>
+{% endblock %}

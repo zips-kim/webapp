@@ -1,0 +1,28 @@
+{% extends "layout.html" %}
+
+{% block title %}🏠 유성쉘터 (Shelter-On){% endblock %}
+
+{% block content %}
+<div class="container" >
+    <div class="log-header">
+        <h2 class="mt-0">📜 시스템 작업 및 에러 로그</h2>
+        <button onclick="location.reload()" class="btn-base btn-primary btn-sm">새로고침</button>
+    </div>
+    
+    <div class="log-terminal">
+        {% for line in logs %}
+            <div class="log-line">
+                {% if 'ERROR' in line or '❌' in line %}
+                    <span class="log-err">{{ line }}</span>
+                {% elif 'WARNING' in line or '⚠️' in line %}
+                    <span class="log-warn">{{ line }}</span>
+                {% elif '🆕' in line or '📦' in line %}
+                    <span class="log-info">{{ line }}</span>
+                {% else %}
+                    <span>{{ line }}</span>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,129 @@
+{% extends "layout.html" %}
+
+{% block title %}🏠 유성쉘터 (Shelter-On){% endblock %}
+
+{% block content %}
+
+<div class="card">
+	<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+		<h2 style="margin: 0;">📍 구호소 관리</h2>
+		<button onclick="openModal('shelterModal')" style="background:#3498db; width:auto; padding: 10px 20px; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">➕ 구호소 등록</button>
+	</div>
+	
+	<div class="mobile-card-container">
+		{% for s in shelters %}
+		<div class="data-card">
+			<div class="card-badge" style="background: #ebf8ff; color: #3182ce;">
+				{{ s.capacity | format_number }}명 정원
+			</div>
+
+			<div class="card-title">🏛️ {{ s.name }}</div>
+			{% if s.address %}<div class="card-info">📍 {{ s.address }}</div>{% endif %}
+			{% if s.phone %}<div class="card-info">📞 {{ s.phone }}</div>{% endif %}
+			<div style="padding: 0px 0px 10px 0px; background: #f8fafc; border-radius: 8px;">
+				{% if s.matched_assemblies %}
+				<div style="margin: 10px; display: flex; flex-wrap: wrap; gap: 5px;">
+					{% for a in s.matched_assemblies %}
+					<span style="background: #ebf5fb; color: #2980b9; padding: 2px 8px; border-radius: 12px; font-size: 12px; border: 1px solid #3498db;">
+						{{ a.name }}
+						<a href="/delete_destination_from_shelter/{{ s.id }}/{{ a.id }}" style="color: #e74c3c; text-decoration: none; margin-left: 5px; font-weight: bold;">×</a>
+					</span>
+					{% endfor %}
+				</div>
+				{% endif %}
+				
+				<form action="/add_destination_direct" method="post" style="margin-top:12px; display:flex; gap:5px;">
+					<span style="font-size: 0.8rem; color: #a0aec0;">🚩 </span>
+					<input type="hidden" name="shelter_id" value="{{ s.id }}">
+					<select name="assembly_id" style="flex:1; font-size:12px; height:32px;min-width:50%;">
+						<option value="">+ 집결지</option>
+						{% for all_a in all_assemblies %}
+						<option value="{{ all_a.id }}">{{ all_a.name }}</option>
+						{% endfor %}
+					</select>
+					<button type="submit" style="width:50px; padding: 0 10px; height: 30px; background: #9b59b6; color: white; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">연결</button>
+				</form>
+				
+			</div>
+
+			<div class="card-actions">
+					{% if s.is_active == 1 %}
+						<button class="btn-full" onclick="showQR('{{ s.id }}', '{{ s.name }}')" style="flex: 1; background: #2c3e50; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold;">입소용 QR</button>
+						
+						<a href="/toggle_shelter/{{ s.id }}/1" style="text-decoration: none;" onclick="return confirm('운영을 중지하시겠습니까?')">
+							<button class="btn-full" style="flex: 1; text-align: center; background: #fff; color: #e53e3e; border: 1px solid #e53e3e; padding: 10px; border-radius: 8px; text-decoration: none; font-weight: bold;">운영중지</button>
+						</a>
+					{% else %}
+						<a href="/toggle_shelter/{{ s.id }}/0" style="text-decoration: none;">
+							<button class="btn-full" style="flex:1;background:#3498db; color: white;">운영 재개</button>
+						</a>
+					{% endif %}
+			</div>
+		</div>
+		{% endfor %}
+	</div>
+</div>
+
+
+
+<div id="shelterModal" class="modal">
+	<div class="modal-content">
+		<span class="close" onclick="closeModal('shelterModal')">&times;</span>
+		<h3 style="margin-top: 0;">🏛️ 신규 구호소 등록</h3>
+		<hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
+		<form action="/add_shelter" method="post">
+			<div style="margin-bottom: 15px;">
+				<label style="display: block; margin-bottom: 5px; font-weight: bold;">구호소 이름</label>
+				<input type="text" name="name" placeholder="예: 유성초등학교 체육관" required class="search-input" style="width: 100%;">
+			</div>
+			<div style="margin-bottom: 20px;">
+				<label style="display: block; margin-bottom: 5px; font-weight: bold;">연락처</label>
+				<input type="text" name="phone" placeholder="042-111-2222" class="search-input" style="width: 100%;" value="042-111-2222">
+			</div>
+			<div style="margin-bottom: 20px;">
+				<label style="display: block; margin-bottom: 5px; font-weight: bold;">연면적</label>
+				<input type="text" name="area" placeholder="1234" class="search-input" style="width: 100%;" value="5678">
+			</div>
+			<div style="margin-bottom: 20px;">
+				<label style="display: block; margin-bottom: 5px; font-weight: bold;">수용능력(명)</label>
+				<input type="text" name="capacity" placeholder="1234" class="search-input" style="width: 100%;" value="1234">
+			</div>			
+			<div style="margin-bottom: 20px;">
+				<label style="display: block; margin-bottom: 5px; font-weight: bold;">위치 (상세 주소)</label>
+				<input type="text" name="address" placeholder="상세 위치를 입력하세요" class="search-input" style="width: 100%;" value="주소">
+			</div>	
+			<button type="submit" style="width: 100%; background: #3498db; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer;">등록하기</button>
+		</form>
+	</div>
+</div>
+
+<div id="qrModal" class="modal">
+	<div class="modal-content" style="text-align: center;">
+		<span class="close" onclick="closeModal('qrModal')">&times;</span>
+		<h3 id="qrTitle" style="margin-top: 0;">구호소 입소 QR</h3>
+		<div id="qrcode" style="display: flex; justify-content: center; margin: 20px 0;"></div>
+					<p style="font-size: 14px; color: #666;">구호소에 입소하시려면 <br/>카메라를 열고 QR코드를 스캔해 주세요.</p>
+		<button onclick="closeModal('qrModal')" style="background: #95a5a6; width: 100%; padding: 12px; color: white; border: none; border-radius: 8px; cursor: pointer;">닫기</button>
+	</div>
+</div>
+
+<script>
+	function openModal(modalId) { document.getElementById(modalId).style.display = "block"; }
+	function closeModal(modalId) { document.getElementById(modalId).style.display = "none"; }
+	
+	function showQR(shelterId, shelterName) {
+		const baseUrl = window.location.origin;
+		const registerUrl = baseUrl + '/register/' + shelterId;
+		document.getElementById('qrTitle').innerText = shelterName + " QR";
+		const container = document.getElementById('qrcode');
+		container.innerHTML = '';
+		new QRCode(container, { text: registerUrl, width: 220, height: 220 });
+		openModal('qrModal');
+	}
+
+	window.onclick = function(event) {
+		if (event.target.classList.contains('modal')) { event.target.style.display = "none"; }
+	}
+</script>
+
+{% endblock %}

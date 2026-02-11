@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}유성쉘터{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    {% if session.logged_in %}
+    <div class="user-bar">
+		<div>
+			<a href="/"><img src="/static/images/logo.png" alt="유성구청" style="height: 36px;"></a>
+		</div>
+		{% if session.shelter_name %}
+		<div style="font-weight: bold; color: #e67e22;">
+			🏛️ {{ session.shelter_name }}
+			{% if session.mission %}
+				<span class="badge">{{ session.mission }}</span>
+			{% endif %}
+		</div>
+		{% endif %}
+		
+		<div style="display: flex; gap: 10px; align-items: center;">
+			<strong>{{ session.user_name }}</strong>
+			{% if session.shelter_id %}
+				<a href="/finish_work" 
+				   onclick="return confirm('오늘 근무를 종료하고 기록하시겠습니까?')"
+				   style="text-decoration:none; font-size:12px; color:#e74c3c; font-weight:bold; border:1px solid #e74c3c; padding:2px 6px; border-radius:4px;">
+				   근무종료
+				</a>
+			{% endif %}
+			<button onclick="toggleAdminMenu()" style="background: none; border: none; cursor: pointer; font-size: 1.1rem; padding: 5px;" title="관리자 메뉴 토글">⚙️</button>
+    
+			<div id="admin-menu-group" style="display: none; align-items: center; gap: 10px; background: #f8fafc; padding: 2px 10px; border-radius: 8px; border: 1px solid #e2e8f0; margin-left: 5px;">
+			{% if session.role == 2 %} 
+				<a href="/admin/resident/export_excel" class="btn-excel">📥 이재민 엑셀 저장</a>
+				<a href="/admin/staff" class="nav-link" title="근무자(명령) 관리" style="font-size: 0.85rem;">👷 근무자</a>
+			{% endif %}
+			{% if session.role == 1 %} 
+				<a href="/admin/resident/export_excel" class="btn-excel">📥 이재민 엑셀 저장</a>
+				<a href="/admin/staff" class="nav-link" title="근무자(명령) 관리" style="font-size: 0.85rem;">👷 근무자</a>
+                <a href="/db_explorer" class="nav-link" title="DB 관리" style="font-size: 0.85rem;">🗄️ DB</a>
+				<a href="/logs" class="nav-link" title="시스템 로그" style="font-size: 0.85rem;">📜 로그</a>
+				<a href="/upload" class="nav-link" title="파일 업로드" style="font-size: 0.85rem;">📂 소스</a>
+			{% endif %}
+			</div>
+			<a href="/logout" style="text-decoration:none; font-size:12px; color:#e74c3c; font-weight:bold; border:1px solid #e74c3c; padding:2px 6px; border-radius:4px;">로그아웃</a>
+		</div>
+	</div>
+    {% endif %}
+
+    <div class="container">
+        {% block content %}{% endblock %}
+	</div>
+<div id="notification-panel" style="position: fixed; bottom:-140px; background: white; border-radius: 15px 15px 0 0; box-shadow: 0 -5px 25px rgba(0,0,0,0.15); z-index: 1000; height: 180px; display: flex; flex-direction: column; transition: height 0.3s ease;">
+    <div id="panel-resizer" onclick="togglePanel(event)" style="height: 45px; background: #2c3e50; color: white; border-radius: 15px 15px 0 0; display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 0 15px;">
+        <div style="width: 40px; height: 4px; background: rgba(255,255,255,0.3); border-radius: 2px; position: absolute; top: 8px; left: 50%; transform: translateX(-50%);"></div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <span id="toggle-icon">▲</span>
+            <span style="font-weight: bold; font-size: 0.9rem;">📢 실시간 상황 알림</span>
+        </div>
+        <button onclick="clearNotifications(event)" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 3px 8px; border-radius: 5px; font-size: 0.7rem; cursor: pointer;">비우기</button>
+    </div>
+    <div id="notification-list" style="flex: 1; overflow-y: auto; padding: 15px; background: #f8fafc;">
+        <div class="empty-msg" style="text-align:center; color:#94a3b8; margin-top:30px;">수신된 알림이 없습니다.</div>
+    </div>
+</div>
+<style>
+#notification-panel {
+    position: fixed;
+    bottom: 0px; /* 네비게이션바 바로 위 */
+    left: -1px; right: -1px;
+    background: #ffffff;
+    border: 1px solid #ced4da;
+    border-radius: 12px 12px 0 0;
+    box-shadow: 0 -5px 20px rgba(0,0,0,0.1);
+    z-index: 1001;
+    display: flex;
+    flex-direction: column;
+    min-height: 45px;
+    max-height: 80vh;
+    height: 150px; /* 기본 높이 */
+    transition: transform 0.3s;
+}
+
+#panel-resizer {
+    height: 45px;
+    background: #2c3e50;
+    color: white;
+    cursor: ns-resize; /* 위아래 드래그 아이콘 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 10px 10px 0 0;
+    position: relative;
+}
+
+.handle-line {
+    width: 40px; height: 4px;
+    background: rgba(255,255,255,0.3);
+    border-radius: 2px;
+    position: absolute; top: 8px;
+}
+
+#notification-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    background: #f8f9fa;
+}
+
+.noti-item {
+    padding: 12px;
+    background: white;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    border-left: 5px solid #3498db;
+    animation: slideIn 0.3s ease-out;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+@keyframes slideIn {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+<script>
+// --- 관리자 메뉴 토글 로직 ---
+function toggleAdminMenu() {
+    const adminMenu = document.getElementById('admin-menu-group');
+    if (adminMenu.style.display === 'none' || adminMenu.style.display === '') {
+        adminMenu.style.display = 'flex'; // 메뉴 보이기
+    } else {
+        adminMenu.style.display = 'none'; // 메뉴 숨기기
+    }
+}
+// 알림창 토글 로직
+const panel = document.getElementById('notification-panel');
+const toggleIcon = document.getElementById('toggle-icon');
+let isCollapsed = true;
+
+function togglePanel(event) {
+    // 비우기 버튼 클릭 시에는 토글되지 않도록 방지
+    if (event.target.tagName === 'BUTTON') return;
+
+    const panel = document.getElementById('notification-panel');
+    const icon = document.getElementById('toggle-icon');
+    
+    if (!isCollapsed) {
+        panel.style.bottom = '-140px';
+        icon.innerText = '▲';
+        isCollapsed = true;
+    } else {
+        panel.style.bottom = '-1px';
+        icon.innerText = '▼';
+        isCollapsed = false;
+    }
+}
+const socket = io(); 
+
+// 2. 연결 확인 로그
+socket.on('connect', () => {
+	console.log("✅ 서버와 연결되었습니다! (ID: " + socket.id + ")");
+});
+
+socket.on('disconnect', () => {
+	console.log("❌ 서버와 연결이 끊어졌습니다.");
+});
+
+socket.on('sys_notification', (data) => {
+	console.log("📢 소켓 알림:", data);
+	handleNotification(data);
+});
+
+// 4. 페이지 로드 시 기존 알림 렌더링
+document.addEventListener("DOMContentLoaded", () => {
+	// 1. 기존 알림 불러오기
+	const saved = JSON.parse(localStorage.getItem('shelter_notifications') || '[]');
+	renderNotifications(saved);
+
+	// 2. 서버에서 보낸 Flash 메시지가 있는지 확인 (Jinja2 문법)
+	{% with messages = get_flashed_messages(with_categories=true) %} 
+		{% if messages %}
+			{% for category, message in messages %}
+				// 카테고리에 따라 아이콘/색상 결정
+				let icon = '📢';
+				let color = '#3498db'; // 기본 파랑
+
+				if ("{{ category }}" === "error") {
+					icon = '❌';
+					color = '#e74c3c'; // 빨강
+				} else if ("{{ category }}" === "warning") {
+					icon = '⚠️';
+					color = '#f1c40f'; // 노랑
+				} else if ("{{ category }}" === "success") {
+					icon = '✅';
+					color = '#2ecc71'; // 초록
+				}
+
+				// 가짜 알림 객체 생성
+				const flashNoti = {
+					message: message,
+					time: new Date().toLocaleTimeString('ko-KR', {hour12: false}),
+					type: "{{ category }}", // 저장용 타입
+					color: color,           // UI용 색상
+					icon: icon              // UI용 아이콘
+				};
+				
+				// 알림 처리 함수 호출
+				handleNotification(flashNoti);
+			{% endfor %}
+		{% endif %}
+	{% endwith %}
+});
+
+// [UI 함수] 알림 목록 그리기
+function renderNotifications(dataArray) {
+	const notiList = document.getElementById('notification-list');
+	if (!notiList) return;
+
+	if (dataArray.length === 0) {
+		notiList.innerHTML = '<div class="empty-msg" style="text-align:center; color:#94a3b8; margin-top:30px;">수신된 알림이 없습니다.</div>';
+		return;
+	}
+	notiList.innerHTML = dataArray.map(data => {
+        // 데이터에 저장된 색상이 없으면 기본값 사용
+        const borderCol = data.color || '#3498db'; 
+        const icon = data.icon || '';
+        
+        return `
+            <div style="background:white; padding:12px; border-radius:10px; margin-bottom:10px; border-left:5px solid ${borderCol}; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                    <strong style="font-size:0.9rem;">${icon} ${data.message}</strong>
+                    <small style="color:#999;">${data.time}</small>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function handleNotification(data) {
+	// 1. 저장
+	let saved = JSON.parse(localStorage.getItem('shelter_notifications') || '[]');
+	saved.unshift(data);
+	if (saved.length > 50) saved.pop();
+	localStorage.setItem('shelter_notifications', JSON.stringify(saved));
+
+	// 2. 렌더링
+	renderNotifications(saved);
+	/*
+	// 3. 패널 열기
+	const panel = document.getElementById('notification-panel');
+	const icon = document.getElementById('toggle-icon');
+	if (panel) {
+		panel.style.bottom = '-1px';
+		if(icon) icon.innerText = '▼';
+	}
+	*/
+}
+
+
+// 4. 알림 비우기
+function clearNotifications() {
+    if (confirm('모든 알림 기록을 삭제하시겠습니까?')) {
+        localStorage.removeItem('shelter_notifications');
+        renderNotifications([]);
+    }
+}
+
+</script>
+    
+
+
+</body>
+</html>

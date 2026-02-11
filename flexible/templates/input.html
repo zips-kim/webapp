@@ -1,0 +1,223 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3">
+		<h4 class="mb-0 fw-bold">
+			{% if mode == 'edit' %}
+				🛠️ {{ form.title }} <span class="text-warning fs-6">데이터 수정</span>
+			{% else %}
+				✏️ {{ form.title }} <span class="text-primary fs-6">새 데이터 등록</span>
+			{% endif %}
+		</h4>
+	</div>
+    <div class="card-body p-4">
+        <form method="POST" enctype="multipart/form-data">
+            
+            {% for field in schema %}
+            <div class="mb-4">
+                <label class="form-label fw-bold text-dark">
+                    {{ field.label }}
+                    {% if field.required %} <span class="text-danger">*</span> {% endif %}
+                </label>
+
+                {# ========================================== #}
+                {#  CASE 1: 📎 파일/사진 입력 (File)          #}
+                {# ========================================== #}
+                {% if field.type == 'file' %}
+                    <input type="file" name="{{ field.key }}" class="form-control" 
+                           {% if field.required and not saved_input[field.key] %}required{% endif %}>
+                    <div class="form-text text-muted">jpg, png, pdf 등의 파일을 등록할 수 있습니다.</div>
+                    
+                    {% if saved_input and saved_input[field.key] %}
+                        <div class="mt-2 p-2 bg-light border rounded d-inline-block">
+                            <span class="small text-muted me-2">현재 파일:</span>
+                            <a href="{{ url_for('static', filename='uploads/' + saved_input[field.key]) }}" target="_blank" class="fw-bold text-decoration-none">
+                                📎 {{ saved_input[field.key] }}
+                            </a>
+                            <input type="hidden" name="existing_{{ field.key }}" value="{{ saved_input[field.key] }}">
+                        </div>
+                    {% endif %}
+
+
+                {# ========================================== #}
+                {#  CASE 2: 🔗 관계형 데이터 (Relation)        #}
+                {# ========================================== #}
+                {% elif field.type == 'relation' %}
+                    
+                    {% if relation_options.get(field.key) %}
+                        
+                        {# --- 2-A. 체크박스 (다중 선택) --- #}
+                        {% if field.widget == 'checkbox' %}
+                            <div class="card p-3 bg-light border-0">
+                                <div class="row">
+                                    {% for opt in relation_options[field.key] %}
+                                    <div class="col-md-4 col-6 mb-2">
+                                        <div class="form-check">
+                                            {% set saved_vals = saved_input[field.key] if saved_input and saved_input[field.key] else [] %}
+                                            
+                                            <input class="form-check-input" type="checkbox" 
+                                                   name="{{ field.key }}" value="{{ opt.id }}" 
+                                                   id="chk_{{ field.key }}_{{ opt.id }}"
+                                                   {% if opt.id|string in saved_vals %}checked{% endif %}>
+                                            
+                                            <label class="form-check-label" for="chk_{{ field.key }}_{{ opt.id }}">
+                                                {{ opt.text }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div class="form-text text-primary">※ 여러 항목을 선택할 수 있습니다.</div>
+
+                        {# --- 2-B. 라디오 버튼 (단일 선택) --- #}
+                        {% elif field.widget == 'radio' %}
+                            <div class="card p-3 bg-light border-0">
+                                <div class="d-flex flex-wrap gap-3">
+                                    {% for opt in relation_options[field.key] %}
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" 
+                                               name="{{ field.key }}" value="{{ opt.id }}" 
+                                               id="radio_{{ field.key }}_{{ opt.id }}"
+                                               {% if field.required %}required{% endif %}
+                                               {% if saved_input and saved_input[field.key]|string == opt.id|string %}checked{% endif %}>
+                                        
+                                        <label class="form-check-label" for="radio_{{ field.key }}_{{ opt.id }}">
+                                            {{ opt.text }}
+                                        </label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                        {# --- 2-C. 셀렉트 박스 (기본값) --- #}
+                        {% else %}
+                            <select name="{{ field.key }}" class="form-select" {% if field.required %}required{% endif %}>
+                                <option value="">-- 선택하세요 --</option>
+                                {% for opt in relation_options[field.key] %}
+                                    <option value="{{ opt.id }}" 
+                                            {% if saved_input and saved_input[field.key]|string == opt.id|string %}selected{% endif %}>
+                                        {{ opt.text }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        {% endif %}
+
+                    {% else %}
+                        <div class="alert alert-warning py-2 small">
+                            ⚠️ 연결된 데이터가 없습니다. 먼저 참조할 데이터를 등록해주세요.
+                        </div>
+                    {% endif %}
+                    
+                    <small class="text-muted d-block mt-1">다른 폼의 데이터를 참조합니다.</small>
+
+
+                {# ========================================== #}
+                {#  CASE 3: 📝 일반 텍스트/숫자/날짜 (Basic)   #}
+                {# ========================================== #}
+                {% else %}
+                    <input type="{{ field.type }}" name="{{ field.key }}" class="form-control" 
+                           value="{{ saved_input[field.key] if saved_input and saved_input[field.key] else '' }}"
+                           placeholder="{{ field.label }} 입력"
+                           {% if field.required %}required{% endif %}>
+                {% endif %}
+            </div>
+            {% endfor %}
+
+            <hr class="my-4">
+			
+			{% if mode == 'edit' and reverse_refs %}
+            <div class="mt-5">
+                <h5 class="fw-bold border-bottom pb-2 mb-3">🔗 연관된 하위 정보 (References)</h5>
+                <div class="row g-3">
+                    {% for ref in reverse_refs %}
+                    <div class="col-md-6">
+                        <div class="card h-100 border-0 bg-light shadow-sm">
+                            <div class="card-header bg-transparent fw-bold text-primary border-bottom-0">
+                                📂 {{ ref.form_title }}
+                                <span class="badge bg-white text-secondary border ms-1">{{ ref.children|length }}건</span>
+                            </div>
+                            <div class="card-body py-2">
+                                <small class="text-muted d-block mb-2">
+                                    ㄴ 연결 항목: <span class="fw-bold">{{ ref.field_label }}</span>
+                                </small>
+                                <ul class="list-group list-group-flush small bg-transparent">
+                                    {% for item in ref.children %}
+                                    <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0">
+                                        <span>{{ item.label }}</span>
+                                        <a href="/entry/edit/{{ item.id }}" class="btn btn-xs btn-outline-secondary py-0" style="font-size: 11px;">
+                                            이동 ↗
+                                        </a>
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+				
+			<hr class="my-4">
+            
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    {% if mode == 'edit' %}
+                        <button type="button" 
+                                class="btn btn-outline-danger"
+                                formaction="/entry/delete/{{ saved_input['id'] }}"
+                                formnovalidate
+                                onclick="return confirm('정말 삭제하시겠습니까?\n삭제된 데이터는 복구할 수 없습니다.');">
+                            🗑️ 삭제
+                        </button>
+                    {% endif %}
+                </div>
+
+                <div class="d-flex gap-2">
+                    <a href="/list/{{ form.id }}" class="btn btn-secondary px-4">취소</a>
+                    <button type="submit" class="btn btn-primary px-4 fw-bold">💾 저장하기</button>
+                </div>
+            </div>
+        </form>
+		
+		{% if mode == 'edit' and history_list %}
+        <div class="mt-5">
+            <h5 class="fw-bold border-bottom pb-2 mb-4">📜 변경 이력 (History)</h5>
+            
+            <div class="timeline">
+                {% for log in history_list %}
+                <div class="d-flex mb-3">
+                    <div class="me-3 d-flex flex-column align-items-center">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center text-white small shadow-sm"
+                             style="width: 32px; height: 32px; background-color: {% if log.action == '생성' %}#28a745{% else %}#007bff{% endif %};">
+                            {% if log.action == '생성' %}✨{% else %}✏️{% endif %}
+                        </div>
+                        {% if not loop.last %}
+                        <div class="bg-light" style="width: 2px; flex-grow: 1; margin-top: 5px;"></div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="card border-0 bg-light flex-grow-1 shadow-sm">
+                        <div class="card-body py-2 px-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <div>
+                                    <span class="fw-bold text-dark">{{ log.user_name }}</span>
+                                    <span class="badge bg-white text-secondary border ms-1">{{ log.action }}</span>
+                                </div>
+                                <small class="text-muted">{{ log.created_at[:16] }}</small>
+                            </div>
+                            <p class="mb-0 small text-secondary">
+                                {{ log.details if log.details else "내용 없음" }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

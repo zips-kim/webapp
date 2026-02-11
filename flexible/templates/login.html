@@ -1,0 +1,31 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white text-center">
+                <h4>🔐 로그인</h4>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label">아이디</label>
+                        <input type="text" name="user_id" class="form-control" required autofocus>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">비밀번호</label>
+                        <input type="password" name="password" class="form-control" required>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">로그인</button>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer text-center bg-white">
+                계정이 없으신가요? <a href="/register" class="fw-bold">회원가입</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

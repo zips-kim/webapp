@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>방재요원 현황 대시보드</h2>
+    <form class="d-flex" action="{{ url_for('dashboard') }}">
+        <select name="set_id" class="form-select me-2" onchange="this.form.submit()">
+            {% for s in sets %}
+            <option value="{{ s[0] }}" {% if s[0] == current_set_id %}selected{% endif %}>{{ s[1] }}</option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+
+{% if no_data %}
+    <div class="alert alert-warning">데이터가 없습니다. [데이터 등록] 메뉴에서 명단을 먼저 등록해주세요.</div>
+{% else %}
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card p-3 text-center bg-primary text-white">
+                <h5>총 대상</h5>
+                <h2>{{ total }}명</h2>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3 text-center bg-success text-white">
+                <h5>교육 이수</h5>
+                <h2>{{ completed }}명</h2>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3 text-center bg-info text-white">
+                <h5>이수율</h5>
+                <h2>{{ rate }}%</h2>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3 text-center bg-warning text-dark">
+                <h5>재난안전 교육</h5>
+                <h2>{{ safety_cnt }}명</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card p-3">
+                <h5>📊 전체 이수 현황</h5>
+                <canvas id="pieChart"></canvas>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card p-3">
+                <h5>📉 이수율 저조 부서 (Top 10)</h5>
+                <canvas id="barChart"></canvas>
+            </div>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    {% if not no_data %}
+    // 파이 차트
+    new Chart(document.getElementById('pieChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['이수', '미이수'],
+            datasets: [{
+                data: [{{ completed }}, {{ total - completed }}],
+                backgroundColor: ['#2ecc71', '#e74c3c']
+            }]
+        }
+    });
+
+    // 막대 차트
+    new Chart(document.getElementById('barChart'), {
+        type: 'bar',
+        data: {
+            labels: {{ dept_labels | tojson }},
+            datasets: [{
+                label: '이수율 (%)',
+                data: {{ dept_values | tojson }},
+                backgroundColor: '#3498db'
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            scales: { x: { beginAtZero: true, max: 100 } }
+        }
+    });
+    {% endif %}
+</script>
+{% endblock %}

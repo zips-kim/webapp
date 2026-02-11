@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>입소 등록 - {{ shelter_name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+	<script src="{{ url_for('static', filename='script.js') }}"></script>
+	<style>
+        .tab-btn {
+            flex: 1; padding: 12px; border-radius: 8px; border: 2px solid #ddd;
+            background: white; color: #666; font-weight: bold; cursor: pointer; transition: 0.2s;
+        }
+        .tab-btn.active {
+            border-color: #3498db; background: #3498db; color: white;
+        }
+        .info-box {
+            background: #fff4e6; padding: 15px; border-radius: 10px;
+            border: 1px solid #ffd8a8; margin-bottom: 20px; display: none;
+        }
+    </style>
+</head>
+<body style="background-color: #f0f2f5; padding: 15px;">
+    <div class="container" style="max-width: 500px; margin-top: 10px;">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h1 style="font-size: 24px;">🏠 {{ shelter_name }}</h1>
+            <p style="color: #666;">입소를 위해 아래 정보를 정확히 입력해 주세요.</p>
+        </div>
+		<!--
+		<div style="margin-bottom: 30px; text-align: center;">
+			<a href="/kakao/resident_login/{{ shelter_id }}" style="text-decoration: none;">
+				<div style="
+					background-color: #FEE500; 
+					color: #191919; 
+					padding: 15px 20px; 
+					border-radius: 12px; 
+					font-weight: bold; 
+					display: flex; 
+					align-items: center; 
+					justify-content: center; 
+					gap: 10px;
+					box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+				">
+					<img src="https://developers.kakao.com/assets/img/about/logos/kakaolink/kakaolink_btn_medium.png" 
+						 style="width: 24px; height: 24px;">
+					<span>카카오톡으로 3초 만에 입장하기</span>
+				</div>
+			</a>
+			<div style="margin-top: 10px; font-size: 0.8rem; color: #95a5a6;">
+				(입소 알림 메시지가 발송됩니다)
+			</div>
+		</div>
+		-->
+
+		<div style="text-align: center; margin-bottom: 15px; position: relative;">
+			<hr style="border: 0; border-top: 1px solid #eee;">
+			<span style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: white; padding: 0 10px; color: #aaa; font-size: 0.8rem;">또는 직접 입력</span>
+		</div>
+
+        <div class="card" style="padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <form action="/add_resident" method="post">
+				<div style="display: flex; gap: 10px; margin-bottom: 20px;">
+					<button type="button" id="tabNew" class="tab-btn active" onclick="setRegMode('NEW')">🏠 세대주 등록</button>
+					<button type="button" id="tabJoin" class="tab-btn" onclick="setRegMode('JOIN')">👨‍👩가족 합류</button>
+				</div>
+			
+				<div id="familyCodeArea" class="info-box">
+                    <label style="font-weight: bold; display: block; margin-bottom: 5px;">👨‍👩‍👧‍👦 가족 인증 코드</label>
+                    <input type="text" name="parent_family_id" id="parentFamilyId" placeholder="세대주가 받은 6자리 코드 입력" class="search-input" style="margin-bottom: 5px; width: 100%; box-sizing: border-box;">
+                    <p style="font-size: 12px; color: #e67e22; margin: 0;">※ 먼저 입소한 세대주에게 코드를 확인하여 입력하세요.</p>
+                </div>
+
+                <input type="hidden" name="family_role" id="familyRole" value="세대주">
+                <input type="hidden" name="shelter_id" value="{{ shelter_id }}">
+				
+                <div style="margin-bottom: 15px;">
+                    <label style="font-weight: bold; display: block; margin-bottom: 5px;">성함 (필수)</label>
+                    <input type="text" name="name" placeholder="성함을 입력하세요" required class="search-input" style="margin-bottom: 0; width: 100%; box-sizing: border-box;">
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="font-weight: bold; display: block; margin-bottom: 5px;">연락처</label>
+                    <input type="text" name="phone" placeholder="예: 010-1234-5678" class="search-input" style="margin-bottom: 0; width: 100%; box-sizing: border-box;">
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <div style="flex: 1;">
+                        <label style="font-weight: bold; display: block; margin-bottom: 5px;">성별</label>
+                        <select name="gender" class="search-input" style="width: 100%; box-sizing: border-box;">
+                            <option value="남">남성</option>
+                            <option value="여">여성</option>
+                        </select>
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="font-weight: bold; display: block; margin-bottom: 5px;">생년월일</label>
+                        <input type="text" name="age" placeholder="예: 19900101" class="search-input" style="margin-bottom: 0; width: 100%; box-sizing: border-box;">
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="font-weight: bold; display: block; margin-bottom: 5px;">주소 (상세 주소)</label>
+                    <input type="text" name="village" placeholder="예: 유성구 대학로 99번길" class="search-input" style="margin-bottom: 0; width: 100%; box-sizing: border-box;">
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="font-weight: bold; display: block; margin-bottom: 5px;">특이사항</label>
+                    <textarea name="note" placeholder="지병(고혈압, 당뇨 등), 알러지, 필요한 도움 등을 적어주세요." style="width:100%; height:80px; padding:10px; border:2px solid #3498db; border-radius:8px; box-sizing: border-box; font-family: inherit;"></textarea>
+                </div>
+                
+                <button type="submit" style="background:#27ae60; width:100%; padding:15px; font-size:18px; font-weight: bold; border: none; border-radius: 8px; color: white; cursor: pointer;">
+                    입소 등록하기
+                </button>
+            </form>
+        </div>
+
+        <div style="text-align: center; margin-top: 20px;">
+            <a href="/" style="color: #666; text-decoration: none; font-size: 14px;">관리자 페이지로 돌아가기</a>
+        </div>
+    </div>
+	
+	<script>
+        function setRegMode(mode) {
+            const familyCodeArea = document.getElementById('familyCodeArea');
+            const addressArea = document.getElementById('addressArea');
+            const familyRole = document.getElementById('familyRole');
+            const submitBtn = document.getElementById('submitBtn');
+            const tabNew = document.getElementById('tabNew');
+            const tabJoin = document.getElementById('tabJoin');
+            const parentFamilyId = document.getElementById('parentFamilyId');
+
+            if (mode === 'JOIN') {
+                familyCodeArea.style.display = 'block';
+                addressArea.style.display = 'none'; // 가족 합류 시 주소 입력 생략 가능 (세대주 데이터 활용)
+                familyRole.value = '세대원';
+                submitBtn.innerText = '가족으로 입소하기';
+                submitBtn.style.background = '#3498db';
+                tabJoin.classList.add('active');
+                tabNew.classList.remove('active');
+                parentFamilyId.required = true;
+            } else {
+                familyCodeArea.style.display = 'none';
+                addressArea.style.display = 'block';
+                familyRole.value = '세대주';
+                submitBtn.innerText = '세대주 등록하기';
+                submitBtn.style.background = '#27ae60';
+                tabNew.classList.add('active');
+                tabJoin.classList.remove('active');
+                parentFamilyId.required = false;
+            }
+        }
+    </script>
+</body>
+</html>

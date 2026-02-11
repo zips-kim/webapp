@@ -1,0 +1,2849 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>주민보호 관제 시스템</title>
+    <style>
+        /* ==========================================================================
+           1. 기본 레이아웃 & 유틸리티
+           ========================================================================== */
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: 'Pretendard', sans-serif; }
+        #layout-container { display: flex; width: 100%; height: 100vh; }
+        .cursor-pointer { cursor: pointer; }
+        
+        /* ==========================================================================
+           2. 사이드바 (Sidebar)
+           ========================================================================== */
+        #sidebar {
+            width: 280px; top:0px; bottom:-30px; background-color: #f8fafc; border-right: 1px solid #ddd;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.05); transition: width 0.3s ease-in-out;
+            display: flex; flex-direction: column; overflow: hidden; position: relative; z-index: 1000;
+        }
+        #sidebar.collapsed { width: 40px; }
+        #sidebar.collapsed .sidebar-header-content,
+        #sidebar.collapsed .sidebar-content-wrapper { opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+
+
+        .sidebar-vertical-text {
+            position: absolute; top: 60px; left: 50%; transform: translateX(-50%);
+            writing-mode: vertical-rl; text-orientation: upright;
+            font-weight: bold; color: #2c3e50; font-size: 14px; letter-spacing: 5px;
+            white-space: nowrap; opacity: 0; transition: opacity 0.3s 0.2s;
+        }
+        #sidebar.collapsed .sidebar-vertical-text { opacity: 1; pointer-events: auto; }
+
+        .toggle-btn {
+            position: absolute; top: 10px; right: 10px;
+            width: 24px; height: 24px; background: #f1f3f5; border: none; border-radius: 4px;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            z-index: 2001; font-size: 10px; color: #555;
+        }
+        #sidebar.collapsed .toggle-btn { right: 50%; transform: translateX(50%); top: 10px; }
+
+        .sidebar-header { padding: 15px; height: 40px; display: flex; align-items: center;  }
+        .sidebar-header-content { display: flex; justify-content: space-between; width: 100%; align-items: center; }
+        .sidebar-content-wrapper { flex: 1; overflow-y: auto; }
+		
+		/* 사고 명칭 헤더 디자인 수정 */
+		.incident-name-header {
+			background: #f8fafc; /* 진한 색에서 밝은 색으로 변경 */
+			padding: 12px 15px;
+			display: flex;
+			align-items: center; /* 가로 정렬 */
+			gap: 10px;
+			border-bottom: 1px solid #e2e8f0;
+			overflow: hidden; /* 영역 넘침 방지 */
+		}
+
+		.incident-badge {
+			background: #ef4444;
+			color: white;
+			font-size: 10px;
+			font-weight: 900;
+			padding: 2px 6px;
+			border-radius: 4px;
+			flex-shrink: 0; /* 배지 크기 고정 */
+			letter-spacing: 1px;
+			animation: blink 2s infinite;
+		}
+
+		.incident-title-text {
+			color: #334155; /* 어두운 그레이로 텍스트 가독성 확보 */
+			font-size: 15px;
+			font-weight: 800;
+			white-space: nowrap; /* 줄바꿈 금지 */
+			overflow: hidden;
+			text-overflow: ellipsis; /* 너무 길면 ... 처리 */
+			line-height: 1;
+		}
+
+		/* On Air 깜빡임 효과 유지 */
+		@keyframes blink {
+			0% { opacity: 1; }
+			50% { opacity: 0.6; }
+			100% { opacity: 1; }
+		}
+
+		/* 대시보드 통계 영역과의 일체감 */
+		#sidebar-stats {
+			padding: 0px;
+			background: #ffffff; /* 통계 영역도 밝게 유지 */
+			border-bottom: 2px solid #e2e8f0;
+		}
+		.sidebar-stats-list { padding: 15px; }
+        
+        /* 사이드바 섹션 타이틀 */
+        .panel-section-title {
+            font-size: 14px; font-weight: 800; color: #2d3748;
+            margin-top: 20px; margin-bottom: 10px; padding: 10px 12px;
+            background: #f7fafc; border-radius: 8px;
+            display: flex; align-items: center; gap: 8px;
+            border-left: 5px solid #cbd5e0; transition: all 0.2s;
+        }
+        .panel-section-title:first-child { margin-top: 0; }
+        .panel-section-title.shelter-title { background: #ebf8ff; border-left-color: #3182ce; color: #2b6cb0; }
+        .panel-section-title.assembly-title { background: #fff5f5; border-left-color: #e53e3e; color: #c53030; }
+
+        /* 사이드바 리스트 아이템 (카드형) */
+        .marker-item { 
+            display: flex; align-items: center; padding: 8px 10px; margin-bottom: 8px; 
+            background: #ffffff; border: 1px solid #dddddd; border-radius: 12px; 
+            cursor: pointer; transition: all 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.02); 
+        }
+        .marker-item:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-color: #cbd5e0; }
+        
+        .marker-item.inactive { background: #f8f9fa; border-color: transparent; box-shadow: none; opacity: 0.8; }
+        .marker-item.hidden-map { opacity: 0.4; filter: grayscale(100%); }
+
+        .marker-icon { 
+            width: 20px; height: 28px; object-fit: contain; flex-shrink: 0; margin-right: 12px; 
+            filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1)); cursor: pointer; transition: transform 0.2s, filter 0.2s;
+        }
+        .marker-icon:hover { transform: scale(1.2); filter: drop-shadow(0 3px 3px rgba(0,0,0,0.2)); }
+        .marker-item.inactive .marker-icon { filter: grayscale(100%) opacity(0.4); }
+
+        .marker-info-box { display: flex; flex-direction: column; justify-content: center; flex: 1; }
+        .marker-name { font-size: 14px; font-weight: 700; color: #2d3748; margin-bottom: 5px; letter-spacing: -0.3px; }
+        .marker-item.inactive .marker-name { color: #a0aec0; text-decoration: none; }
+        .marker-stats { display: flex; gap: 6px; }
+
+        /* 뱃지 스타일 */
+        .stat-badge, .staff-badge { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+        .stat-badge { background: #ebf8ff; color: #3182ce; }
+        .staff-badge { background: #f0fff4; color: #38a169; }
+        .marker-item.inactive .stat-badge, .marker-item.inactive .staff-badge { background: #edf2f7; color: #a0aec0; }
+        .badge-count { background: #e74c3c; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+
+        /* ==========================================================================
+           3. 지도 영역 (Map Area) & 오버레이
+           ========================================================================== */
+        #map-area { flex: 1; position: relative; height: 100%; }
+        #map { width: 100%; height: 100%; }
+
+        /* 지도 마커 (Custom Overlay) */
+        .marker-content { width: 30px; height: 41px; cursor: pointer; transition: transform 0.2s; }
+        .marker-content img { width: 100%; height: 100%; display: block; filter: drop-shadow(2px 3px 3px rgba(0,0,0,0.3)); }
+        .marker-content:hover, .marker-content.highlight { transform: translateY(-5px); z-index: 100; }
+        .marker-content.grayscale img { filter: grayscale(100%) opacity(0.7) drop-shadow(1px 2px 2px rgba(0,0,0,0.2)); }
+
+        /* 사이드바 대시보드 강조 디자인 */
+		#sidebar-stats {
+			padding: 10px 10px;
+			background: #f1f5f9; /* 배경색을 살짝 깔아 구별 */
+			border-bottom: 2px solid #e2e8f0;
+		}
+
+		.stat-grid {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 12px;
+		}
+
+		.stat-mini-card {
+			background: #ffffff;
+			border-radius: 12px;
+			padding: 12px;
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+			border-left: 6px solid #ddd; /* 강조 바 */
+			transition: all 0.2s ease;
+			cursor: hand;
+		}
+
+		.stat-mini-card:hover {
+			transform: translateY(-3px);
+			box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+		}
+
+		/* 상태별 포인트 컬러 */
+		.stat-residents { border-left-color: #6366f1; } /* 보라 */
+		.stat-supplies { border-left-color: #10b981; }  /* 초록 */
+		.stat-shelters { border-left-color: #3b82f6; }  /* 파랑 */
+		.stat-assemblies { border-left-color: #f59e0b; } /* 주황 */
+
+		.stat-label {
+			font-size: 11px;
+			font-weight: 800;
+			color: #64748b;
+			margin-bottom: 4px;
+			display: flex;
+			align-items: center;
+			gap: 4px;
+		}
+
+		.stat-value-row {
+			display: flex;
+			align-items: baseline;
+			justify-content: center;
+			gap: 2px;
+		}
+
+		.stat-number {
+			font-size: 22px;
+			font-weight: 900;
+			color: #1e293b;
+			line-height: 1;
+		}
+
+		.stat-unit {
+			font-size: 12px;
+			font-weight: 600;
+			color: #94a3b8;
+		}
+
+        /* 범례 & 연결 가이드 */
+        .route-legend-container { 
+			display:none;
+            position: absolute; top: 5px; right: 40px; z-index: 900; 
+            background: rgba(255, 255, 255, 0.95); padding: 15px; border-radius: 12px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15); max-height: 80vh; overflow-y: auto; width: 220px; 
+        }
+        .legend-title { font-size: 13px; font-weight: bold; margin-bottom: 8px; border-bottom: 2px solid #eee; padding-bottom: 5px;}
+        .route-item { display: flex; align-items: center; gap: 8px; padding: 6px; margin-bottom: 4px; background: #f8f9fa; border-radius: 4px; cursor: pointer; font-size: 11px; }
+        .color-box { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0;}
+        .arrow-overlay { font-size: 16px; font-weight: 900; text-shadow: 2px 0 0 #fff, -2px 0 0 #fff, 0 2px 0 #fff, 0 -2px 0 #fff; pointer-events: none; opacity: 1; }
+        
+        #connect-guide { 
+            display: none; position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); 
+            z-index: 901; background: rgba(44, 62, 80, 0.9); color: white; padding: 8px 16px; 
+            border-radius: 30px; font-size: 13px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.3); 
+            animation: slideUp 0.3s ease-out; 
+        }
+        @keyframes slideUp { from { transform: translate(-50%, 20px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+
+        /* 컨텍스트 메뉴 (우클릭) */
+        #contextMenu { position: absolute; display: none; z-index: 3000; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); overflow: hidden; min-width: 140px; }
+        .context-item { padding: 10px 15px; cursor: pointer; font-size: 12px; border-bottom: 1px solid #eee; }
+        .context-item:hover { background: #f1f3f5; }
+
+        /* 인포윈도우 (집결지용) */
+        .iw-container { padding: 5px; text-align: center; min-width: 140px; }
+        .iw-title { font-weight: bold; margin-bottom: 8px; display: block; font-size: 14px; }
+        .iw-controls { display: flex; flex-direction: column; gap: 5px; margin-top: 5px; border-top: 1px solid #eee; padding-top: 5px; }
+        .iw-btn-action { 
+            border: none; padding: 6px 0; border-radius: 4px; 
+            font-size: 11px; font-weight: bold; cursor: pointer; color: white; width: 100%; transition: opacity 0.2s;
+        }
+        .iw-btn-action:hover { opacity: 0.9; }
+        .btn-connect { background-color: #e67e22; }
+        .btn-stop { background-color: #e74c3c; }
+        .btn-start { background-color: #2ecc71; }
+
+        /* ==========================================================================
+           4. 슬라이드 패널 공통 (Detail & Supply)
+           ========================================================================== */
+        #detail-panel, #supply-panel {
+            position: absolute; top: 0; left: 0; bottom: 0; width: 370px;
+            background: white; z-index: 999; box-shadow: 4px 0 15px rgba(0,0,0,0.1);
+            transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            display: flex; flex-direction: column; 
+        }
+        #detail-panel.open, #supply-panel.open { transform: translateX(0); }
+        
+        /* 패널 헤더 */
+        .detail-header {
+            padding: 10px 5px 10px 15px; border-bottom: 1px solid #eee; background: #2c3e50; color: white;
+            display: flex; justify-content: space-between; align-items: center; height: 50px; flex-shrink: 0;
+        }
+        .detail-header-title-box { flex: 1; min-width: 0; margin-right: 10px; }
+        .detail-header h3 { margin: 0; font-size: 1.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; }
+        .header-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+        .btn-close-detail { background: none; border: none; color: white; font-size: 24px; cursor: pointer; opacity: 0.8; }
+        .btn-close-detail:hover { opacity: 1; }
+
+        .detail-content { flex: 1; overflow-y: auto; padding: 10px; background: #f8f9fa; }
+        .detail-section {
+            background: white; border-radius: 8px; padding: 10px 15px 10px 15px; margin-bottom: 10px; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #edf2f7;
+        }
+        .detail-section h4 {
+            margin: 0 0 12px 0; font-size: 14px; color: #2d3748;
+            display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f3f5; padding-bottom: 8px;
+        }
+        .detail-list { list-style: none; padding: 0; margin: 0; font-size: 13px; }
+        .detail-list li { padding: 8px 0; border-bottom: 1px solid #f1f3f5; display: flex; justify-content: space-between; }
+        .detail-list li:last-child { border-bottom: none; }
+        .empty-msg { color: #a0aec0; font-size: 12px; text-align: center; padding: 10px; }
+
+        /* [구호소] 수정/저장 버튼 & 인풋 */
+        .btn-edit-mode {
+            background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.4);
+            color: white; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; white-space: nowrap;
+        }
+        .btn-edit-mode:hover { background: rgba(255, 255, 255, 0.3); }
+        .edit-btn-group { display: flex; gap: 5px; }
+        .btn-save-action { background: #27ae60; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; }
+        .btn-cancel-action { background: #95a5a6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; }
+        
+        .info-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .info-table th { text-align: left; color: #718096; padding: 6px 0; width: 70px; vertical-align: top; }
+        .info-table td { padding: 6px 0; color: #2d3748; font-weight: 500; }
+        .info-input { padding: 5px; border: 1px solid #cbd5e0; border-radius: 4px; font-size: 13px; background: #fff; width: 100%; box-sizing: border-box; }
+        
+        .view-mode { display: block; }
+        .edit-mode { display: none; }
+        .editing .view-mode { display: none; }
+        .editing .edit-mode { display: block; }
+
+        /* [구호소] 관리자 토글 스위치 */
+        .toggle-switch { position: relative; display: inline-block; width: 40px; height: 22px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #2ecc71; }
+        input:checked + .slider:before { transform: translateX(18px); }
+        .toggle-label { font-size: 12px; color: white; margin-right: 5px;}
+
+		/* [New] 패널 내 미니 페이지네이션 스타일 */
+		.mini-pagination {
+			display: flex;
+			justify-content: center;
+			gap: 4px;
+			margin-top: 10px;
+			padding-top: 10px;
+			border-top: 1px dashed #eee;
+		}
+		.mini-page-btn {
+			border: 1px solid #ddd;
+			background: white;
+			font-size: 11px;
+			padding: 3px 8px;
+			border-radius: 4px;
+			cursor: pointer;
+			color: #555;
+		}
+		.mini-page-btn:hover { background: #f5f5f5; }
+		.mini-page-btn.active {
+			background: #2c3e50;
+			color: white;
+			border-color: #2c3e50;
+			font-weight: bold;
+		}
+		.mini-page-btn:disabled {
+			opacity: 0.5;
+			cursor: default;
+		}
+
+        /* [물품] 패널 스타일 */
+        .add-supply-form { background: #ebf8ff; padding: 15px; border-bottom: 1px solid #bee3f8; margin-bottom: 5px; }
+        .form-row { display: flex; gap: 5px; margin-bottom: 5px; }
+        .form-row input { min-width: 0; padding: 5px; border: 1px solid #cbd5e0; border-radius: 4px; font-size: 13px; }
+        .btn-add-stock { width: 100%; background: #2c3e50; color: white; border: none; padding: 8px; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        .btn-add-stock:hover { background: #2c5282; }
+
+        /* 물품 카드 전체 아이템 */
+		.supply-card-item {
+			background: #ffffff;
+			border: 1px solid #e2e8f0;
+			border-radius: 10px;
+			padding: 12px;
+			margin-bottom: 10px;
+			box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+		}
+
+		/* 줄 레이아웃 */
+		.supply-row-main, .supply-row-sub {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			gap: 10px;
+		}
+
+		.supply-row-main {
+			margin-bottom: 7px;
+			padding-bottom: 5px;
+			border-bottom: 1px dashed #edf2f7;
+		}
+
+		/* 이름 그룹 (좌측 정렬) */
+		.supply-name-group {
+			flex: 1;
+			min-width: 0;
+		}
+
+		.supply-name { 
+			font-weight: 800; 
+			color: #2d3748; 
+			font-size: 14px; 
+			overflow: hidden; 
+			text-overflow: ellipsis; 
+			white-space: nowrap; 
+		}
+
+		/* 액션 및 수량 그룹 (우측 정렬) */
+		.supply-action-group {
+			display: flex;
+			align-items: center;
+			gap: 6px;
+			flex-shrink: 0;
+		}
+
+		/* 수량 표시 박스 */
+		.supply-total-box {
+			margin-right: 4px;
+			text-align: right;
+			min-width: 45px;
+		}
+
+		.supply-total { font-size: 16px; font-weight: 800; color: #3182ce; }
+		.unit { font-size: 11px; color: #a0aec0; margin-left: 2px; }
+
+		/* 미니 인풋 & 셀렉트 */
+		.mini-input {
+			width: 50px;
+			padding: 5px;
+			border: 1px solid #cbd5e0;
+			border-radius: 4px;
+			font-size: 12px;
+			text-align: center;
+		}
+
+		.mini-select {
+			flex: 1;
+			padding: 5px;
+			border: 1px solid #cbd5e0;
+			border-radius: 4px;
+			font-size: 12px;
+			background-color: #f8fafc;
+		}
+
+		/* 버튼 스타일 */
+		.btn-mini {
+			border: none;
+			border-radius: 4px;
+			padding: 5px 10px;
+			font-size: 12px;
+			font-weight: bold;
+			color: white;
+			cursor: pointer;
+			white-space: nowrap;
+		}
+		.btn-green { background: #48bb78; }
+		.btn-blue { background: #4299e1; }
+
+        /* ==========================================================================
+           5. 알림 패널 (Notification)
+           ========================================================================== */
+        #notification-panel {
+            position: fixed; bottom: -140px; left: -1px; right: -1px;
+            background: white; border-radius: 15px 15px 0 0; box-shadow: 0 -5px 25px rgba(0,0,0,0.15);
+            z-index: 1501; height: 180px; display: flex; flex-direction: column; transition: height 0.3s ease, bottom 0.3s ease;
+        }
+        #panel-resizer {
+            height: 45px; background: #2c3e50; color: white; border-radius: 15px 15px 0 0;
+            display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 0 15px; position: relative;
+        }
+        .handle-line { width: 40px; height: 4px; background: rgba(255,255,255,0.3); border-radius: 2px; position: absolute; top: 8px; left: 50%; transform: translateX(-50%); }
+		/* ==========================================================================
+           6. 입소 등록
+           ========================================================================== */
+        .resident-form-box {
+            background: #fff5f5; border: 1px solid #fed7d7; border-radius: 8px;
+            padding: 12px; margin-bottom: 15px; display: none; /* 기본 숨김 */
+            animation: slideDown 0.2s ease-out;
+        }
+        .resident-form-box.show { display: block; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .form-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .form-title { font-size: 13px; font-weight: bold; color: #c53030; display: flex; align-items: center; gap: 5px; }
+
+        .res-input-row { display: flex; gap: 8px; margin-bottom: 8px; }
+        .res-input-full { width: 100%; box-sizing: border-box; padding: 6px; border: 1px solid #cbd5e0; border-radius: 4px; font-size: 13px; }
+        .res-input { flex: 1; padding: 6px; border: 1px solid #cbd5e0; border-radius: 4px; font-size: 13px; min-width: 0; }
+        .res-select { padding: 6px; border: 1px solid #cbd5e0; border-radius: 4px; font-size: 13px; }
+        
+        /* 라디오 버튼 그룹 (가족 선택) */
+        .role-radio-group { display: flex; gap: 15px; margin-bottom: 8px; font-size: 13px; color: #4a5568; align-items: center; }
+        .role-radio-group label { cursor: pointer; display: flex; align-items: center; gap: 4px; }
+
+        .btn-reg-submit {
+            width: 100%; background: #e53e3e; color: white; border: none; padding: 8px; 
+            border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px;
+        }
+        .btn-reg-submit:hover { background: #c53030; }
+        
+        /* 세대주 연락처 입력칸 (조건부 표시) */
+        #head-phone-row { display: none; background: #fff; padding: 5px; border-radius: 4px; border: 1px dashed #cbd5e0; margin-bottom: 8px;}
+		
+		/* [New] 리스트 내 상태 변경 버튼 스타일 */
+        .btn-action-group { display: flex; gap: 4px; }
+        
+        .btn-res-action {
+            border: none; border-radius: 4px; padding: 4px 8px; 
+            font-size: 11px; font-weight: bold; color: white; cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .btn-res-action:hover { opacity: 0.8; }
+        
+        .btn-out { background-color: #718096; }   /* 회색 (퇴소) */
+        .btn-hosp { background-color: #e53e3e; }  /* 빨강 (병원) */
+		
+		/* [수정] 이재민 목록 아이템 (한 줄로 심플하게) */
+        .res-item-row { 
+            display: flex; justify-content: space-between; align-items: center; width: 100%; 
+            padding: 5px 5px; cursor: pointer; border-radius: 4px; transition: background 0.2s;
+        }
+        .res-item-row:hover { background: #f1f3f5; }
+        
+        .res-simple-info { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #2d3748; }
+        .res-sub-text { 
+            font-size: 12px; 
+            color: #a0aec0; 
+            margin-left: auto;  /* 핵심: 왼쪽 여백을 다 채워서 오른쪽으로 밈 */
+            margin-right: 8px;  /* 화살표(›)와의 간격 */
+            text-align: right;
+        }
+        .res-status-dot { width: 8px; height: 8px; border-radius: 50%; background: #48bb78; display: inline-block; } /* 입소중 녹색점 */
+
+        /* [New] 이재민 통합 관리 모달 (디자인 업그레이드) */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6); z-index: 2000;
+            display: none; align-items: center; justify-content: center;
+            opacity: 0; transition: opacity 0.2s;
+        }
+        .modal-overlay.show { display: flex; opacity: 1; }
+        
+        .manager-window {
+            width: 95%; 
+            max-width: 1400px; /* 화면 꽉 차게 키움 */
+            height: 95vh;
+            background: #f0f2f5; /* 연한 회색 배경 (관리자 페이지 느낌) */
+            border-radius: 12px; display: flex; flex-direction: column; overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        /* 헤더 (네이비색 강조) */
+        .manager-header {
+            padding: 10px 10px; 
+            background: #2c3e50; /* 진한 네이비 */
+            color: white; 
+            border-bottom: 1px solid #1a252f;
+            display: flex; justify-content: space-between; align-items: center;
+            flex-shrink: 0;
+        }
+
+        /* 본문 영역 */
+        .manager-body {
+            flex: 1; overflow-y: auto; padding: 20px;
+            display: flex; flex-direction: column;
+        }
+
+        /* 상태 탭 (디자인 통일) */
+        .status-tab-bar { display: flex; gap: 10px; margin-bottom: 15px; background: #e0e0e0; padding: 5px; border-radius: 10px; flex-shrink:0; }
+        .status-tab {
+            flex: 1; text-align: center; padding: 10px; border-radius: 8px; cursor: pointer;
+            font-size: 14px; font-weight: bold; color: #666; transition: all 0.2s;
+        }
+        .status-tab.active-in { background: white; color: #3498db; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .status-tab.active-hosp { background: white; color: #e74c3c; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .status-tab.active-out { background: white; color: #2c3e50; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+
+        /* 데이터 카드 그리드 */
+        .data-card-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px;
+            align-content: start; flex: 1; /* 남은 공간 차지 */
+        }
+        .data-card {
+            background: white; border-radius: 10px; padding: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #e1e4e8;
+            display: flex; flex-direction: column; gap: 10px; position: relative;
+        }
+        
+        /* 카드 내부 텍스트 */
+        .card-title { font-size: 16px; font-weight: bold; color: #2c3e50; }
+        .card-meta { font-size: 13px; color: #7f8c8d; margin-top: 4px; }
+        
+        /* 버튼 색상 변경 (요청사항 반영) */
+        .card-actions { display: flex; gap: 5px; margin-top: auto; }
+        .btn-action {
+            flex: 1; padding: 7px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; font-size: 13px; color: white; transition: opacity 0.2s;
+        }
+        .btn-action:hover { opacity: 0.9; }
+        
+        .btn-act-orange { background: #2c3e50; } /* 병원: 주황색 */
+        .btn-act-gray { background: #7f8c8d; }   /* 퇴소: 차분한 회색 */
+        .btn-act-green { background: #27ae60; }   /* 복귀: 초록색 */
+        .btn-act-blue { background: #3498db; }    /* 지급: 파란색 */
+
+        /* 헤더 내 컨트롤 스타일 */
+        .header-select {
+            padding: 8px; border-radius: 6px; border: 1px solid #34495e; 
+            background: #34495e; color: white; font-weight: bold; font-size: 14px; cursor: pointer;
+        }
+        .header-search {
+            padding: 8px 12px; border-radius: 6px; border: none; font-size: 13px; width: 250px;
+        }
+
+        /* 페이지네이션 (하단 고정) */
+        .pagination-container {
+            margin-top: 20px; display: flex; justify-content: center; gap: 5px; flex-shrink: 0;
+        }
+        .page-btn {
+            padding: 6px 12px; border: 1px solid #ddd; background: white; 
+            cursor: pointer; border-radius: 4px; font-size: 13px; color: #333;
+        }
+        .page-btn.active { background: #3498db; color: white; border-color: #3498db; font-weight: bold; }
+        .page-btn:hover:not(.active) { background: #f1f1f1; }
+        
+        /* 서브 모달 (등록폼) */
+        .sub-modal {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 450px; background: white; padding: 25px; border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4); z-index: 2100; display: none;
+        }
+        .sub-modal.open { display: block; }
+		
+		/* [New] 검색창 디자인 (삭제 아이콘 + 실행 버튼) */
+        .search-container {
+            display: flex; align-items: center; gap: 5px;
+        }
+        
+        .search-input-wrapper {
+            position: relative; display: flex; align-items: center;
+        }
+        
+        .header-search-input {
+            padding: 8px 30px 8px 12px; /* 오른쪽 패딩을 늘려 X버튼 공간 확보 */
+            border-radius: 6px; border: none; font-size: 13px; width: 220px;
+            background: rgba(255, 255, 255, 0.9);
+        }
+        
+        /* 입력창 내부 삭제(X) 버튼 */
+        .btn-input-clear {
+            position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+            background: #ccc; color: white; border-radius: 50%; border: none;
+            width: 16px; height: 16px; font-size: 10px; line-height: 16px;
+            cursor: pointer; display: none; /* 기본 숨김 */
+            align-items: center; justify-content: center; padding: 0;
+        }
+        .btn-input-clear:hover { background: #999; }
+
+        /* 검색 실행 버튼 */
+        .btn-search-exec {
+            background: #34495e; color: white; border: 1px solid #4a6278;
+            padding: 8px 12px; border-radius: 6px; font-weight: bold; cursor: pointer;
+            font-size: 13px;
+        }
+        .btn-search-exec:hover { background: #2c3e50; }
+		
+		/* [New] 이재민 상세 정보 패널 (구호소 패널 위에 덮임) */
+        #resident-info-panel {
+            position: absolute; 
+            top: 0; 
+            bottom: 0; 
+            width: 370px; /* 패널 너비 */
+            left: 369px;  /* [핵심] 구호소 패널 너비만큼 띄워서 배치 */
+            
+            background: white; 
+            z-index: 998; /* [핵심] 구호소 패널(999)보다 낮게 하여 뒤에서 나오게 함 */
+            box-shadow: 4px 0 15px rgba(0,0,0,0.1);
+            
+            /* 애니메이션: 평소엔 왼쪽(-100%)으로 숨어있다가(구호소 패널 뒤), open 시 제자리(0)로 나옴 */
+            transform: translateX(-100%); 
+            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            
+            display: flex; flex-direction: column; 
+			display: none;
+            border-left: 1px solid #dcdcdc; /* 왼쪽 경계선 추가 */
+        }
+        
+        #resident-info-panel.open { 
+            transform: translateX(0); /* 우측으로 슬라이드 아웃 */
+        }
+
+
+		
+        /* (나머지 헤더, 프로필 카드 등의 내부 스타일은 기존 유지) */
+        .res-detail-header {
+            background: #2c3e50; color: white; padding: 10px 5px 10px 15px; height: 49px;
+            display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #1a252f; flex-shrink: 0;
+        }
+        .btn-back { background: none; border: none; color: white; font-size: 18px; cursor: pointer; padding: 5px; }
+        .btn-back:hover { opacity: 0.8; }
+
+        /* 프로필 카드 스타일 */
+        .profile-card { background: white; padding: 20px; text-align: center; border-bottom: 1px solid #edf2f7; margin-bottom: 10px; }
+        .profile-avatar { 
+            width: 70px; height: 70px; background: #e2e8f0; border-radius: 50%; margin: 0 auto 10px; 
+            display: flex; align-items: center; justify-content: center; font-size: 30px; 
+        }
+        .profile-name { font-size: 18px; font-weight: 800; color: #2d3748; margin-bottom: 5px; }
+        .profile-meta { font-size: 13px; color: #718096; line-height: 1.5; }
+        .profile-badge { 
+            display: inline-block; padding: 3px 8px; border-radius: 12px; 
+            font-size: 11px; font-weight: bold; margin-top: 5px; 
+        }
+        
+        /* 액션 버튼 그룹 (크게) */
+        .action-big-btn-row { display: flex; gap: 8px; padding: 0 15px 15px 15px; }
+        .btn-big-action { 
+            flex: 1; padding: 12px 0; border: none; border-radius: 8px; 
+            font-size: 14px; font-weight: bold; color: white; cursor: pointer; 
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+        }
+        .btn-big-action:hover { opacity: 0.9; transform: translateY(-1px); }
+
+        /* 물품 지급 리스트 */
+        .supply-history-list { list-style: none; padding: 0; margin: 0; }
+        .supply-history-item { 
+            display: flex; justify-content: space-between; align-items: center; 
+            padding: 10px; border-bottom: 1px solid #f1f3f5; font-size: 13px; 
+        }
+        .supply-history-item:last-child { border-bottom: none; }
+		
+		/* [New] 입퇴소 이력 스타일 */
+        .history-list { list-style: none; padding: 0; margin: 0; }
+        .history-item { 
+            display: flex; justify-content: space-between; align-items: center; 
+            padding: 8px 0; border-bottom: 1px dashed #e2e8f0; font-size: 13px; color: #4a5568;
+        }
+        .history-item:last-child { border-bottom: none; }
+        .history-badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-right: 5px; }
+        
+        .badge-in { background: #e6fffa; color: #2c7a7b; border: 1px solid #b2f5ea; }
+        .badge-out { background: #edf2f7; color: #718096; border: 1px solid #cbd5e0; }
+        .badge-hosp { background: #fff5f5; color: #c53030; border: 1px solid #feb2b2; }
+		
+		/* 특이사항 기록용 스타일 */
+		.note-input-area {
+			display: flex; gap: 5px; margin-bottom: 10px;
+		}
+		.note-input {
+			flex: 1; padding: 8px; border: 1px solid #cbd5e0; border-radius: 4px; font-size: 12px;
+		}
+		.btn-note-save {
+			background: #4a5568; color: white; border: none; padding: 0 12px; 
+			border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px;
+		}
+		.btn-note-save:hover { background: #2d3748; }
+
+		/* 이력 리스트 내 특이사항 스타일 */
+		.note-content-box {
+			background: #fff5f5; /* 연한 노랑 배경 */
+			padding: 8px; 
+			border-radius: 6px; 
+			border: 1px solid #e2e8f0;
+			margin-top: 4px;
+			font-size: 12px;
+			color: #4a5568;
+			width: 95%;
+			position: relative;
+		}
+		.note-label {
+			font-size: 11px; font-weight: bold; color: #d46b08; margin-right: 5px;
+		}
+		
+		/* [NEW] 삭제 미니 버튼 스타일 */
+		.btn-del-mini {
+			background: none;
+			border: none;
+			color: #a0aec0;
+			font-weight: bold;
+			cursor: pointer;
+			padding: 0 5px;
+			font-size: 14px;
+			line-height: 1;
+		}
+		.btn-del-mini:hover {
+			color: #e74c3c; /* 마우스 오버 시 빨간색 */
+		}
+		.res-list-content {
+			flex: 1;
+			display: flex; 
+			justify-content: space-between; 
+			align-items: center;
+		}
+    </style>
+</head>
+<body>
+
+    <div id="layout-container">
+        <div id="sidebar">
+            <button class="toggle-btn" onclick="toggleSidebar()">◀</button>
+            <div class="sidebar-vertical-text">주민보호시스템</div>
+
+            <div class="sidebar-header">
+                <div class="sidebar-header-content">
+                    <a href="/"><img src="/static/images/logo.png" alt="유성구청" style="height: 36px;"></a>
+					<input type="hidden" id="incident_id" value="{{ incident_id }}" />
+                </div>
+            </div>
+            
+            <div class="sidebar-content-wrapper">
+				<div class="incident-name-header">
+					<div class="incident-badge">ON AIR</div>
+					<div class="incident-title-text">{{ incident_title }}</div>
+				</div>
+				
+				<div id="sidebar-stats">
+					<div class="stat-grid">
+						<div class="stat-mini-card stat-residents">
+							<div class="stat-label">👥 이재민</div>
+							<div class="stat-value-row">
+								<span id="val-residents" class="stat-number">{{ summary.residents }}</span>
+								<span class="stat-unit">명</span>
+							</div>
+						</div>
+						
+						<div class="stat-mini-card stat-supplies cursor-pointer" onclick="openSupplyPanel()">
+							<div class="stat-label">📦 구호물품</div>
+							<div class="stat-value-row">
+								<span id="val-supplies" class="stat-number">{{ summary.supplies }}</span>
+								<span class="stat-unit">개</span>
+							</div>
+						</div>
+						
+						<div class="stat-mini-card stat-shelters">
+							<div class="stat-label">🏥 구호소</div>
+							<div class="stat-value-row">
+								<span id="val-shelters" class="stat-number">{{ summary.shelters }}</span>
+								<span class="stat-unit">개소</span>
+							</div>
+						</div>
+						
+						<div class="stat-mini-card stat-assemblies">
+							<div class="stat-label">🚩 집결지</div>
+							<div class="stat-value-row">
+								<span id="val-assemblies" class="stat-number">{{ summary.assemblies }}</span>
+								<span class="stat-unit">개소</span>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="sidebar-stats-list">
+					<div class="panel-section-title shelter-title"><span>🏥 구호소 현황</span></div>
+					<div id="shelter-list"></div>
+					
+					<div class="panel-section-title assembly-title" style="margin-top: 20px;"><span>🚩 집결지 현황</span></div>
+					<div id="assembly-list"></div>
+				</div>
+				
+            </div>
+			<div style="height:30px;"></div>
+        </div>
+
+        <div id="map-area">
+
+
+            <div id="detail-panel">
+                <div class="detail-header">
+                    <div class="detail-header-title-box"><h3 id="panel-header-title">구호소 정보</h3></div>
+                    <div class="header-actions">
+                        <button id="btn-edit-mode" class="btn-edit-mode" onclick="enableEditMode()">✏️ 수정</button>
+                        <div id="edit-actions" class="edit-btn-group" style="display:none;">
+                            <button class="btn-save-action" onclick="saveShelterInfo()">저장</button>
+                            <button class="btn-cancel-action" onclick="cancelEditMode()">취소</button>
+                        </div>
+                        <div id="admin-switch-area"></div> 
+                        <button class="btn-close-detail" onclick="closeDetailPanel()">×</button>
+                    </div>
+                </div>
+
+                <div class="detail-content" id="shelter-detail-content">
+                    <div class="detail-section">
+                        <h4>ℹ️ 기본 정보</h4>
+                        <table class="info-table">
+                            <tr><th>이름</th><td><span class="view-mode" id="v-name"></span><input type="text" class="edit-mode info-input" id="e-name"></td></tr>
+                            <tr><th>주소</th><td><span class="view-mode" id="v-addr"></span><input type="text" class="edit-mode info-input" id="e-addr"></td></tr>
+                            <tr><th>수용</th><td><span class="view-mode"><span id="v-cap"></span>명</span><input type="number" class="edit-mode info-input" id="e-cap"></td></tr>
+                            <tr><th>위치</th><td>
+                                <div class="view-mode" style="font-size:11px; color:#718096;">위도: <span id="v-lat"></span>, 경도: <span id="v-lng"></span></div>
+                                <div class="edit-mode" style="display:none; gap:5px;">
+                                    <input type="text" class="info-input" id="e-lat" placeholder="위도" style="width:48%;">
+                                    <input type="text" class="info-input" id="e-lng" placeholder="경도" style="width:48%;">
+                                </div>
+                            </td></tr>
+                        </table>
+                    </div>
+                    <div class="detail-section">
+                        <h4 style="margin-bottom: 10px;">
+							<div>👥 이재민 명단 <span id="dt-res-count" class="badge-count">0</span></div>
+							<div style="display:flex; gap:5px;">
+								 <button onclick="toggleResidentForm()" style="background:#edf2f7; border:none; padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer; color:#4a5568;">+ 입소 등록</button>
+								 <button onclick="openManagerModal(currentEditingShelterId)" style="background:#2c3e50; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer;">🔍 전체 관리</button>
+							</div>
+						</h4>
+
+						<div style="display: flex; gap: 5px; margin-bottom: 10px;">
+							<div style="position: relative; flex: 1; display: flex; align-items: center;">
+								<input type="text" id="dt-res-search" placeholder="이름 또는 연락처 검색..." 
+									   style="width: 100%; padding: 6px 30px 6px 10px; border: 1px solid #cbd5e0; border-radius: 4px; font-size: 13px; box-sizing: border-box;"
+									   oninput="togglePanelSearchX()"
+									   onkeyup="if(window.event.keyCode==13){searchResidentInPanel()}">
+								
+								<button id="btn-panel-res-clear" 
+										onclick="clearPanelSearch()"
+										style="position: absolute; right: 8px; background: #ccc; color: white; border-radius: 50%; border: none; width: 16px; height: 16px; font-size: 10px; cursor: pointer; display: none; align-items: center; justify-content: center; padding: 0;">
+									✕
+								</button>
+							</div>
+							<button onclick="searchResidentInPanel()" 
+									style="background: #4a5568; color: white; border: none; padding: 0 10px; border-radius: 4px; cursor: pointer; font-size: 12px; white-space: nowrap;">
+								검색
+							</button>
+						</div>
+                        
+                        <div id="resident-reg-form" class="resident-form-box">
+                            <div class="form-header">
+                                <span class="form-title">📝 신규 입소 등록</span>
+                                <button onclick="toggleResidentForm()" style="border:none; background:none; cursor:pointer; font-size:16px; color:#aaa;">×</button>
+                            </div>
+
+                            <div class="role-radio-group">
+                                <label><input type="radio" name="fam_role" value="세대주" checked onchange="toggleHeadPhoneInput()"> 🏠 세대주 (대표)</label>
+                                <label><input type="radio" name="fam_role" value="세대원" onchange="toggleHeadPhoneInput()"> 👨‍👩‍👧‍👦 세대원</label>
+                            </div>
+
+                            <div id="head-phone-row">
+                                <input type="text" id="reg-head-phone" class="res-input-full" placeholder="연결할 세대주 연락처 입력">
+                                <div style="font-size:11px; color:#718096; margin-top:2px;">* 먼저 등록된 세대주의 전화번호를 입력하세요.</div>
+                            </div>
+
+                            <div class="res-input-row">
+                                <input type="text" id="reg-res-name" class="res-input" placeholder="이름 (필수)">
+                                <input type="text" id="reg-res-age" class="res-input" placeholder="생년월일" style="flex:0.6;">
+                                <select id="reg-res-gender" class="res-select">
+                                    <option value="남">남</option>
+                                    <option value="여">여</option>
+                                </select>
+                            </div>
+                            
+                            <div class="res-input-row">
+                                <input type="text" id="reg-res-phone" class="res-input-full" placeholder="연락처 (010-0000-0000)">
+                            </div>
+                            
+                            <div class="res-input-row">
+                                <input type="text" id="reg-res-note" class="res-input-full" placeholder="특이사항 (지병, 환자, 임산부 등)">
+                            </div>
+
+                            <button class="btn-reg-submit" onclick="registerResident()">입소 등록 완료</button>
+                        </div>
+
+                        <ul id="dt-res-list" class="detail-list" style="min-height: 150px;">
+							</ul>
+
+						<div id="dt-res-pagination" class="mini-pagination"></div>
+                    </div>
+					
+                    <div class="detail-section"><h4>📦 물품 현황</h4><ul id="dt-inv-list" class="detail-list"></ul></div>
+                    <div class="detail-section">
+						<h4 style="margin-bottom: 10px;">
+							<div>👷 근무자 현황</div>
+							<button onclick="toggleStaffForm()" style="background:#edf2f7; border:none; padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer; color:#4a5568;">+ 근무 등록</button>
+						</h4>
+
+						<div id="staff-reg-form" class="resident-form-box"> <div class="form-header">
+								<span class="form-title" style="color:#2c5282;">👷 신규 근무 등록</span>
+								<button onclick="toggleStaffForm()" style="border:none; background:none; cursor:pointer; font-size:16px; color:#aaa;">×</button>
+							</div>
+							
+							<div class="res-input-row">
+								<input type="text" id="reg-staff-name" class="res-input" placeholder="이름 (필수)">
+								<input type="text" id="reg-staff-dept" class="res-input" placeholder="소속 부서">
+							</div>
+							
+							<div class="res-input-row">
+								<input type="text" id="reg-staff-phone" class="res-input-full" placeholder="연락처 (010-0000-0000)">
+							</div>
+							
+							<div class="res-input-row">
+								<select id="reg-staff-mission" class="res-input-full">
+									<option value="">담당 임무 선택 (필수)</option>
+									<option value="총괄">총괄 관리</option>
+									<option value="물품배분">물품 배분</option>
+									<option value="이재민등록">이재민 등록/상담</option>
+									<option value="의료지원">의료 지원</option>
+									<option value="치안/보안">치안 및 보안</option>
+									<option value="기타">기타</option>
+								</select>
+							</div>
+
+							<button class="btn-reg-submit" style="background:#2b6cb0;" onclick="registerStaff()">근무자 등록</button>
+						</div>
+
+						<ul id="dt-staff-list" class="detail-list"></ul>
+					</div>
+					<div style="height:30px;"></div>
+                </div>
+            </div>
+			
+
+            <div id="supply-panel">
+                <div class="detail-header">
+                    <h3>📦 구호물품 재고 관리</h3>
+                    <button class="btn-close-detail" onclick="closeSupplyPanel()">×</button>
+                </div>
+                <div class="detail-content" style="padding:0;">
+                    <div class="add-supply-form">
+                        <div style="font-size:13px; font-weight:bold; color:#2c5282; margin-bottom:8px;">➕ 신규 품목 등록</div>
+                        <div class="form-row">
+                            <input type="text" id="new-item-name" placeholder="품목명" style="flex:2;">
+                            <input type="number" id="new-item-qty" placeholder="초기수량" style="flex:1;">
+                        </div>
+                        <button class="btn-add-stock" onclick="addHqSupply()">등록하기</button>
+                    </div>
+                    <div style="padding: 10px 10px;">
+                        <div id="hq-supply-list"></div>
+                    </div>
+					<div style="height:30px;"></div>
+                </div>
+            </div>
+			
+			<div id="resident-info-panel">
+                <div class="res-detail-header">
+                    <button class="btn-back" onclick="closeResidentInfoPanel()">⬅</button>
+                    <h3 style="margin:0; font-size:16px;">이재민 상세 정보</h3>
+                </div>
+                
+                <div class="detail-content" style="padding:0; background:#f8fafc; overflow-y: auto;">
+                    
+                    <div class="profile-card">
+                        <div class="profile-avatar">👤</div>
+                        <div class="profile-name" id="res-info-name"></div>
+                        <div class="profile-meta">
+                            <span id="res-info-gender-age"></span> | 📞 <span id="res-info-phone"></span>
+                        </div>
+                        <div class="profile-meta" id="res-info-shelter" style="color:#2980b9; font-weight:bold; margin-top:5px;"></div>
+                        <div id="res-info-note" style="margin-top:8px; color:#e53e3e; font-size:12px; font-weight:bold;"></div>
+                    </div>
+
+                    <div class="detail-section" style="margin: 0 10px 10px 10px; border:1px solid #e2e8f0;">
+                        <h4 style="margin-bottom:10px; font-size:13px;">🎁 구호물품 지급</h4>
+                        
+                        <div style="display:flex; gap:5px; margin-bottom:15px; padding-bottom:15px; border-bottom:1px dashed #e2e8f0;">
+                            <select id="res-info-supply-select" class="info-input" style="flex:1;">
+                                <option value="">지급할 물품 선택</option>
+                            </select>
+                            <button id="btn-info-distribute" style="background:#27ae60; color:white; border:none; border-radius:4px; padding:0 12px; font-weight:bold; cursor:pointer;">지급</button>
+                        </div>
+                        
+                        <div style="font-size:12px; color:#718096; margin-bottom:5px; font-weight:bold;">📋 최근 지급 내역</div>
+                        <ul id="res-info-dist-list" class="supply-history-list" style="background:white; border:1px solid #edf2f7; border-radius:4px;">
+                        </ul>
+                    </div>
+
+                    <div class="detail-section" style="margin: 0 10px 10px 10px; border:1px solid #e2e8f0;">
+                        <h4 style="margin-bottom:10px; font-size:13px;">👣 이동/상태 이력</h4>
+						<div class="note-input-area">
+							<input type="text" id="res-note-input" class="note-input" placeholder="특이사항 (엔터 입력)">
+							<button class="btn-note-save" onclick="addResidentNote()">메모</button>
+						</div>
+                        <ul id="res-info-history-list" class="history-list">
+                        </ul>
+                    </div>
+                    
+                    <div class="action-big-btn-row" style="background: white; border-top:1px solid #eee; padding: 15px; flex-shrink: 0;">
+						<button class="btn-big-action btn-act-orange" id="btn-info-hosp">
+							<span style="font-size:18px;">🚑</span> <span>병원 이송</span>
+						</button>
+						<button class="btn-big-action btn-act-gray" id="btn-info-out">
+							<span style="font-size:18px;">🏠</span> <span>퇴소 처리</span>
+						</button>
+					</div>
+					
+                </div>
+				<div style="height:30px;"></div>
+                
+            </div>
+
+            <div id="map"></div>
+            
+            <div id="notification-panel">
+                <div id="panel-resizer" onclick="togglePanel(event)">
+                    <div class="handle-line"></div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span id="toggle-icon">▲</span>
+                        <span style="font-weight: bold; font-size: 0.9rem;">📢 실시간 상황 알림</span>
+                    </div>
+                    <button onclick="clearNotifications(event)" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 3px 8px; border-radius: 5px; font-size: 0.7rem; cursor: pointer;">비우기</button>
+                </div>
+                <div id="notification-list" style="flex: 1; overflow-y: auto; padding: 15px; background: #f8fafc;">
+                    <div class="empty-msg" style="text-align:center; color:#94a3b8; margin-top:30px;">수신된 알림이 없습니다.</div>
+                </div>
+            </div>
+
+            <div id="route-legend" class="route-legend-container">
+                <div class="legend-title">🚌 주민소개 경로</div>
+                <div id="legend-list"></div>
+            </div>
+            <div id="connect-guide">
+                🔗 연결할 '구호소'를 클릭하세요! <button onclick="cancelConnect()" style="margin-left:10px; padding:2px 8px; border-radius:10px; border:none; background:#e74c3c; color:white; cursor:pointer;">취소</button>
+            </div>
+        </div>
+    </div>
+	
+	<div id="resident-manager-modal" class="modal-overlay">
+                <div class="manager-window">
+                    <div class="manager-header">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <div style="font-size: 20px; font-weight: bold;">👥 이재민 통합 관리</div>
+                            <select id="mgr-shelter-select" class="header-select" onchange="changeManagerShelter()">
+                                </select>
+                        </div>
+                        
+                        <div style="display:flex; gap:10px;">
+                            <div class="search-container">
+                                <div class="search-input-wrapper">
+                                    <input type="text" id="mgr-search" placeholder="이름, 전화번호..." class="header-search-input" 
+                                           oninput="toggleSearchClearBtn()" onkeydown="handleSearchEnter(event)">
+                                    
+                                    <button id="btn-mgr-clear" class="btn-input-clear" onclick="clearManagerSearch()">✕</button>
+                                </div>
+                                <button class="btn-search-exec" onclick="executeManagerSearch()">🔍</button>
+                            </div>
+
+                            <button onclick="openSubModal()" style="background:#27ae60; color:white; border:none; padding:8px 18px; border-radius:6px; font-weight:bold; cursor:pointer;">➕ 신규 등록</button>
+                            <button onclick="closeManagerModal()" style="background:none; border:none; color:rgba(255,255,255,0.8); font-size:28px; cursor:pointer; line-height: 1;">×</button>
+                        </div>
+                    </div>
+
+                    <div class="manager-body">
+                        <div class="status-tab-bar">
+                            <div class="status-tab active-in" id="tab-IN" onclick="switchManagerTab('IN')">🏠 입소중 (<span id="cnt-IN">0</span>)</div>
+                            <div class="status-tab" id="tab-HOSPITAL" onclick="switchManagerTab('HOSPITAL')">🏥 병원이송 (<span id="cnt-HOSPITAL">0</span>)</div>
+                            <div class="status-tab" id="tab-OUT" onclick="switchManagerTab('OUT')">🚪 퇴소완료 (<span id="cnt-OUT">0</span>)</div>
+                        </div>
+
+                        <div id="mgr-card-grid" class="data-card-grid">
+                            </div>
+
+                        <div id="mgr-pagination" class="pagination-container">
+                            </div>
+                    </div>
+                </div>
+                
+                <div id="resident-add-modal" class="sub-modal">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;">
+                        <h3 style="margin:0; color:#2c3e50;">👤 신규 이재민 등록</h3>
+                        <button onclick="closeSubModal()" style="border:none; background:none; font-size:24px; cursor:pointer; color:#999;">×</button>
+                    </div>
+                    
+                    <div style="display:flex; flex-direction:column; gap:10px;">
+                        <label style="font-size:12px; font-weight:bold; color:#555;">소속 구호소</label>
+                        <select id="modal-reg-shelter" class="info-input" style="background:#f0f8ff; border-color:#3498db;">
+                            </select>
+                        <label style="font-size:12px; font-weight:bold; color:#555; margin-top:5px;">가구 정보</label>
+                        <select id="modal-reg-fam-role" class="info-input" onchange="toggleModalRegHeadPhone()">
+                            <option value="세대주">🏠 세대주 (대표)</option>
+                            <option value="세대원">👨‍👩‍👧‍👦 세대원 (가족)</option>
+                        </select>
+                        
+                        <input type="text" id="modal-reg-head-phone" class="info-input" placeholder="🔗 세대주 연락처 입력 (필수)" style="display:none; background:#fff5f5; border-color:#e53e3e;">
+                        
+                        <div style="display:flex; gap:10px;">
+                            <div style="flex:1;">
+                                <input type="text" id="modal-reg-name" class="info-input" placeholder="이름 (필수)" style="width:100%; box-sizing:border-box;">
+                            </div>
+                            <div style="flex:1;">
+                                <input type="text" id="modal-reg-age" class="info-input" placeholder="생년월일(6/8자리)" style="width:100%; box-sizing:border-box;">
+                            </div>
+                        </div>
+
+                        <div style="display:flex; gap:10px;">
+                            <div style="flex:1;">
+                                <select id="modal-reg-gender" class="info-input" style="width:100%;">
+                                    <option value="남">남성</option>
+                                    <option value="여">여성</option>
+                                </select>
+                            </div>
+                            <div style="flex:1.5;">
+                                <input type="text" id="modal-reg-phone" class="info-input" placeholder="연락처 (010-...)" style="width:100%; box-sizing:border-box;">
+                            </div>
+                        </div>
+                        
+                        <input type="text" id="modal-reg-note" class="info-input" placeholder="특이사항 (지병, 부상 등)" style="width:100%; box-sizing:border-box;">
+                        
+                        <button onclick="registerResidentManager()" style="background:#27ae60; color:white; border:none; padding:12px; border-radius:8px; font-weight:bold; cursor:pointer; margin-top:10px; font-size:15px; transition: background 0.2s;">
+                            등록 완료
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+    <div id="contextMenu">
+        <div class="context-item" onclick="addNode('shelter')">🏥 구호소 추가</div>
+        <div class="context-item" onclick="addNode('assembly')">🚩 집결지 추가</div>
+    </div>
+
+    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey={{ kakao_js_key }}&libraries=services"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+
+    <script>
+        // ------------------------------------------------------------
+        // 1. 설정 및 상수 정의
+        // ------------------------------------------------------------
+        var userRole = {{ user_role|default(3) }}; 
+        var locations = {{ locations | tojson }};
+        
+        // 아이콘 SVG
+        const SVG_SHELTER = `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="41" viewBox="0 0 38 52"><path d="M19 2C9.6 2 2 9.6 2 19C2 31 19 50 19 50S36 31 36 19C36 9.6 28.4 2 19 2Z" fill="#3498db" stroke="#2980b9" stroke-width="2"/><circle cx="19" cy="19" r="9" fill="white"/></svg>`;
+        const SVG_ASSEMBLY = `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="41" viewBox="0 0 38 52"><path d="M19 2C9.6 2 2 9.6 2 19C2 31 19 50 19 50S36 31 36 19C36 9.6 28.4 2 19 2Z" fill="#e74c3c" stroke="#c0392b" stroke-width="2"/><circle cx="19" cy="19" r="7" fill="white"/></svg>`;
+        const IMG_SHELTER = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(SVG_SHELTER);
+        const IMG_ASSEMBLY = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(SVG_ASSEMBLY);
+        const ROUTE_COLORS = ['#E74C3C', '#8E44AD', '#3498DB', '#16A085', '#F39C12', '#2C3E50'];
+
+        // 전역 변수
+        var mapContainer = document.getElementById('map');
+        var mapOption = { center: new kakao.maps.LatLng(36.391170, 127.381979), level: 7 };
+        var map = new kakao.maps.Map(mapContainer, mapOption); 
+        var zoomControl = new kakao.maps.ZoomControl();
+        map.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
+
+        var pendingSourceNode = null; 
+        var clickedLat = 0, clickedLng = 0;
+        var routeManager = {};
+        var markerManager = {}; 
+        var routeCount = 0;
+        var colorIndex = 0;
+        var currentInfowindow = null;
+        var currentEditingShelterId = null;
+		var currentManagerShelterId = 0;
+		
+		var detailResData = []; // 전체 데이터를 저장할 변수
+		var detailResPage = 1;  // 현재 페이지
+		const DETAIL_ITEMS_PER_PAGE = 5; // 페이지당 5명
+
+        // ------------------------------------------------------------
+        // 2. 소켓(Socket.IO) 연결 및 이벤트 리스너
+        // ------------------------------------------------------------
+        const socket = io(); 
+        socket.on('connect', () => console.log("✅ 서버 연결됨 (ID: " + socket.id + ")"));
+        socket.on('disconnect', () => console.log("❌ 서버 연결 끊김"));
+        
+        // 시스템 알림 수신
+        socket.on('sys_notification', (data) => {
+            //console.log("📢 알림:", data);
+            handleNotification(data);
+        });
+
+        // 데이터 갱신 신호 수신
+        socket.on('map_update', function(msg) {
+            //console.log("갱신 신호:", msg);
+            updateDashboardData();
+            // 물품 패널이 열려있다면 리스트 갱신
+            if (document.getElementById('supply-panel').classList.contains('open')) {
+                loadHqSupplies();
+            }
+        });
+
+        // ------------------------------------------------------------
+        // 3. 지도 초기화 및 마커 생성
+        // ------------------------------------------------------------
+        var bounds = new kakao.maps.LatLngBounds();
+        document.getElementById('route-legend').style.display="none";
+        locations.forEach(function(loc) {
+            if (loc.lat && loc.lng) {
+                var coords = new kakao.maps.LatLng(loc.lat, loc.lng);
+                createCustomMarker(coords, loc);
+                
+                // 대피 경로 그리기
+                if (loc.type === 'assembly' && loc.route_infos) {
+                    loc.route_infos.forEach(function(route) {
+                        if (route.path_data && route.path_data.length > 0) {
+                            var linePath = route.path_data.map(p => new kakao.maps.LatLng(p.lat, p.lng));
+                            drawPathAndAddToLegend(linePath, loc.name, route.shelter_name);
+                            linePath.forEach(p => bounds.extend(p));
+							
+							document.getElementById('route-legend').style.display="block";
+                        }
+                    });
+                }
+            }
+        });
+
+        // ------------------------------------------------------------
+        // 4. 핵심 기능 함수 (마커, 패널, 연결)
+        // ------------------------------------------------------------
+        
+        // [CustomOverlay 마커 생성]
+        function createCustomMarker(coords, loc) {
+            var markerKey = loc.type + '_' + loc.id;
+            
+            var contentDiv = document.createElement('div');
+            contentDiv.className = 'marker-content';
+            if (!loc.is_active) contentDiv.classList.add('grayscale');
+
+            var img = document.createElement('img');
+            img.src = (loc.type === 'shelter') ? IMG_SHELTER : IMG_ASSEMBLY;
+            contentDiv.appendChild(img);
+
+            var customOverlay = new kakao.maps.CustomOverlay({
+                position: coords, content: contentDiv, xAnchor: 0.5, yAnchor: 1, zIndex: 3
+            });
+            customOverlay.setMap(map);
+
+            markerManager[markerKey] = { overlay: customOverlay, div: contentDiv, data: loc, visible: true };
+            addMarkerToPanel(loc, markerKey);
+
+            contentDiv.onclick = function(e) {
+                e.stopPropagation();
+                if (pendingSourceNode) {
+                    if (loc.type === 'shelter') completeConnection(loc); 
+                    else alert("⚠️ 구호소를 선택해야 연결됩니다.");
+                    return; 
+                }
+                if (loc.type === 'shelter') openDetailPanel(loc.id);
+                else openInfoWindow(loc, coords);
+            };
+        }
+
+        // [좌측 사이드바 패널 등록]
+        function addMarkerToPanel(loc, key) {
+            var containerId = loc.type === 'shelter' ? 'shelter-list' : 'assembly-list';
+            var container = document.getElementById(containerId);
+            
+            var div = document.createElement('div');
+            div.className = 'marker-item';
+            div.id = 'panel-' + key;
+            if(!loc.is_active) div.classList.add('inactive'); 
+            
+            div.onclick = function() {
+                if (loc.type === 'shelter') openDetailPanel(loc.id);
+                else {
+                    var moveLatLon = new kakao.maps.LatLng(loc.lat, loc.lng);
+                    map.panTo(moveLatLon);
+                    openInfoWindow(loc, moveLatLon);
+                }
+            };
+            
+            div.onmouseenter = function() { if(markerManager[key]) markerManager[key].div.classList.add('highlight'); };
+            div.onmouseleave = function() { if(markerManager[key]) markerManager[key].div.classList.remove('highlight'); };
+
+            var iconImg = document.createElement('img');
+            iconImg.src = (loc.type === 'shelter') ? IMG_SHELTER : IMG_ASSEMBLY;
+            iconImg.className = 'marker-icon';
+            iconImg.onclick = function(e) { e.stopPropagation(); toggleMapVisibility(key); };
+
+            var infoBox = document.createElement('div');
+            infoBox.className = 'marker-info-box';
+            var html = `<div class="marker-name">${loc.name}</div>`;
+            if(loc.type==='shelter' && (loc.stat_resident || loc.stat_staff)) {
+                html += `<div class="marker-stats">`;
+                html += `<span class="stat-badge">👥 ${loc.stat_resident || 0}명</span><span class="staff-badge">👮 ${loc.stat_staff || 0}명</span>`;
+                html += `</div>`;
+            }
+            infoBox.innerHTML = html;
+
+            div.appendChild(iconImg);
+            div.appendChild(infoBox);
+            container.appendChild(div);
+        }
+
+        // ------------------------------------------------------------
+        // 5. 기능별 로직: 구호소 상세/수정
+        // ------------------------------------------------------------
+		function searchResidentInPanel() {
+			const keyword = document.getElementById('dt-res-search').value.trim();
+			const incidentId = document.getElementById('dt-res-search-incidentId').value.trim();
+			const shelterId = currentEditingShelterId;
+
+			// 통합 관리 모달에서 사용하는 API를 그대로 활용합니다.
+			// 상태는 'IN'(입소중)인 사람을 기본으로 검색합니다.
+			const query = `?page=1&status=IN&shelter_id=${shelterId}&search=${encodeURIComponent(keyword)}`;
+
+			fetch('/api/residents/search' + query)
+			.then(r => r.json())
+			.then(data => {
+				if(data.result === 'ok') {
+					// 결과 데이터를 패널용 전역 변수에 할당
+					detailResData = data.list; 
+					detailResPage = 1;
+					
+					// 카운트 업데이트 및 리스트 렌더링
+					document.getElementById('dt-res-count').innerText = data.counts.IN || 0;
+					renderDetailResPage();
+					
+					// 만약 검색 결과가 없으면 알림
+					if(data.list.length === 0 && keyword !== "") {
+						document.getElementById('dt-res-list').innerHTML = `<li class="empty-msg">'${keyword}' 검색 결과가 없습니다.</li>`;
+					}
+				}
+			})
+			.catch(err => console.error("패널 검색 오류:", err));
+		}
+		
+		// 1. 입력 내용에 따라 X 버튼 표시/숨김 제어
+		function togglePanelSearchX() {
+			var input = document.getElementById('dt-res-search');
+			var btn = document.getElementById('btn-panel-res-clear');
+			btn.style.display = (input.value.length > 0) ? 'flex' : 'none';
+		}
+
+		// 2. 검색어 초기화 및 리스트 재로드
+		function clearPanelSearch() {
+			var input = document.getElementById('dt-res-search');
+			input.value = '';
+			togglePanelSearchX(); // X 버튼 숨기기
+			
+			// 검색어 없이 다시 검색 실행하여 전체 목록 불러오기
+			searchResidentInPanel();
+			input.focus();
+		}
+        function openDetailPanel(shelterId) {
+            closeSupplyPanel();
+            currentEditingShelterId = shelterId;
+            var panel = document.getElementById('detail-panel');
+            var contentDiv = document.getElementById('shelter-detail-content');
+			var searchInput = document.getElementById('dt-res-search');
+			if(searchInput) {
+				searchInput.value = ""; 
+				togglePanelSearchX(); // 패널 새로 열 때 X 버튼 숨김
+			}
+            
+            // UI 초기화
+            contentDiv.classList.remove('editing'); 
+            document.getElementById('btn-edit-mode').style.display = (userRole <= 2) ? 'inline-block' : 'none';
+            document.getElementById('edit-actions').style.display = 'none';
+            document.getElementById('panel-header-title').innerText = "불러오는 중...";
+            panel.classList.add('open');
+
+            fetch(`/api/shelter/${shelterId}/details`).then(r => r.json()).then(data => {
+                if(data.result === 'ok') {
+                    document.getElementById('panel-header-title').innerText = data.name;
+                    // 보기 모드
+                    document.getElementById('v-name').innerText = data.name;
+                    document.getElementById('v-addr').innerText = data.address || "-";
+                    document.getElementById('v-cap').innerText = data.capacity || "0";
+                    document.getElementById('v-lat').innerText = data.lat;
+                    document.getElementById('v-lng').innerText = data.lng;
+                    // 수정 모드
+                    document.getElementById('e-name').value = data.name;
+                    document.getElementById('e-addr').value = data.address || "";
+                    document.getElementById('e-cap').value = data.capacity || 0;
+                    document.getElementById('e-lat').value = data.lat;
+                    document.getElementById('e-lng').value = data.lng;
+
+                    // 관리자 스위치
+                    var switchArea = document.getElementById('admin-switch-area');
+                    switchArea.innerHTML = "";
+                    if (userRole <= 2) {
+                        var currentLoc = locations.find(l => l.id == shelterId && l.type == 'shelter');
+                        var isChecked = currentLoc ? currentLoc.is_active : false;
+                        var labelText = isChecked ? "운영중" : "중지됨";
+                        switchArea.innerHTML = `<span class="toggle-label">${labelText}</span><label class="toggle-switch"><input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleStatus('shelter', ${shelterId}, '${data.name}')"><span class="slider"></span></label>`;
+                    }
+                    // [수정] 이재민 리스트 페이징 처리 시작
+					detailResData = data.residents; // 전체 데이터 저장
+					detailResPage = 1;              // 1페이지로 초기화
+					document.getElementById('dt-res-count').innerText = detailResData.length;
+					
+					renderDetailResPage(); // 1페이지 렌더링 호출
+                    document.getElementById('dt-res-count').innerText = data.residents.length;
+                    renderList('dt-inv-list', data.inventory, (item) => `<span>${item.name}</span> <b>${item.qty}개</b>`, "재고 없음");
+                    renderList('dt-staff-list', data.staff, (item) => `
+                    <div style="width:100%;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span>
+                                <strong>${item.name}</strong> 
+                                <small style="color:#718096;">(${item.dept || '소속없음'})</small>
+                            </span>
+
+                            <div style="display:flex; align-items:center; gap:5px;">
+                                <div style="font-size:12px; color:#4a5568;">📋 ${item.mission || '일반임무'}</div>
+                                <button class="btn-del-mini" onclick="deleteStaff(${item.id})" title="근무자 삭제">×</button>
+                            </div>
+                        </div>
+                    </div>
+                `, "현재 근무자 없음");
+                } else {
+                    alert("정보 로딩 실패: " + data.msg); closeDetailPanel();
+                }
+            });
+        }
+		// [New] 구호소 패널 이재민 리스트 렌더링 (페이지네이션 적용)
+		function renderDetailResPage() {
+			var listContainer = document.getElementById('dt-res-list');
+			var pageContainer = document.getElementById('dt-res-pagination');
+			
+			// 데이터가 없을 경우
+			if (!detailResData || detailResData.length === 0) {
+				listContainer.innerHTML = '<li class="empty-msg">현재 입소한 이재민이 없습니다.</li>';
+				pageContainer.innerHTML = '';
+				return;
+			}
+
+			// 1. 현재 페이지 데이터 슬라이싱
+			var start = (detailResPage - 1) * DETAIL_ITEMS_PER_PAGE;
+			var end = start + DETAIL_ITEMS_PER_PAGE;
+			var pageItems = detailResData.slice(start, end);
+
+			// 2. 리스트 HTML 생성
+			listContainer.innerHTML = pageItems.map(item => {
+				let alertDot = item.note ? `<span style="color:#e53e3e; margin-left:4px;">●</span>` : '';
+				return `
+					<div class="res-item-row" onclick="openResidentInfoPanel(${item.id})">
+						<div class="res-simple-info">
+							<span class="res-status-dot"></span>
+							<strong>${item.name}</strong>
+							${alertDot} <span class="res-sub-text">(${item.gender}, ${item.age || '?'})</span>
+						</div>
+						<div class="res-sub-text">
+							${item.time}
+						</div>
+						<div style="color:#cbd5e0;">›</div>
+					</div>
+				`;
+			}).join('');
+
+			// 3. 페이지네이션 버튼 생성
+			var totalPages = Math.ceil(detailResData.length / DETAIL_ITEMS_PER_PAGE);
+			if (totalPages <= 1) {
+				pageContainer.innerHTML = ''; // 1페이지뿐이면 버튼 숨김
+				return;
+			}
+
+			var html = '';
+			
+			// [이전] 버튼
+			html += `<button class="mini-page-btn" onclick="changeDetailPage(${detailResPage - 1})" ${detailResPage === 1 ? 'disabled' : ''}>&lt;</button>`;
+
+			// [페이지 번호] (너무 많으면 ... 처리를 할 수도 있지만, 패널용이라 간단히 전체 표시하거나 5개만 표시)
+			// 여기서는 간단하게 전체 표시하되, 데이터가 100건 넘어가면 로직 추가 필요. 일단은 단순 루프.
+			let startPage = Math.max(1, detailResPage - 2);
+			let endPage = Math.min(totalPages, startPage + 4);
+			
+			// 시작 페이지 보정
+			if (endPage - startPage < 4) {
+				startPage = Math.max(1, endPage - 4);
+			}
+
+			for (let i = startPage; i <= endPage; i++) {
+				html += `<button class="mini-page-btn ${i === detailResPage ? 'active' : ''}" onclick="changeDetailPage(${i})">${i}</button>`;
+			}
+
+			// [다음] 버튼
+			html += `<button class="mini-page-btn" onclick="changeDetailPage(${detailResPage + 1})" ${detailResPage === totalPages ? 'disabled' : ''}>&gt;</button>`;
+
+			pageContainer.innerHTML = html;
+		}
+
+		// 페이지 변경 함수
+		function changeDetailPage(newPage) {
+			var totalPages = Math.ceil(detailResData.length / DETAIL_ITEMS_PER_PAGE);
+			if (newPage < 1 || newPage > totalPages) return;
+			
+			detailResPage = newPage;
+			renderDetailResPage();
+		}
+
+        function closeDetailPanel() { 
+            document.getElementById('detail-panel').classList.remove('open');
+            
+            // [추가] 부모 패널이 닫히면 자식(이재민 상세) 패널도 같이 닫기
+            if (typeof closeResidentInfoPanel === 'function') {
+                closeResidentInfoPanel();
+            }
+        }
+        function enableEditMode() {
+            document.getElementById('shelter-detail-content').classList.add('editing');
+            document.getElementById('btn-edit-mode').style.display = 'none';
+            document.getElementById('edit-actions').style.display = 'flex';
+        }
+        function cancelEditMode() {
+            document.getElementById('shelter-detail-content').classList.remove('editing');
+            document.getElementById('btn-edit-mode').style.display = 'inline-block';
+            document.getElementById('edit-actions').style.display = 'none';
+        }
+        function saveShelterInfo() {
+            var id = currentEditingShelterId;
+            var payload = {
+                name: document.getElementById('e-name').value,
+                address: document.getElementById('e-addr').value,
+                capacity: document.getElementById('e-cap').value,
+                lat: document.getElementById('e-lat').value,
+                lng: document.getElementById('e-lng').value
+            };
+            if(!payload.name) return alert("이름은 필수입니다.");
+
+            fetch(`/api/shelter/${id}/update`, {
+                method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+            }).then(r => r.json()).then(data => {
+                if(data.result === 'ok') { openDetailPanel(id); updateDashboardData(); } 
+                else { alert("오류: " + data.msg); }
+            });
+        }
+		
+		// 1. 근무자 등록 폼 토글
+		function toggleStaffForm() {
+			if(userRole > 2) return alert("관리자 권한이 필요합니다.");
+			var form = document.getElementById('staff-reg-form');
+			form.classList.toggle('show');
+			if(form.classList.contains('show')) document.getElementById('reg-staff-name').focus();
+		}
+
+		// 2. 근무자 등록 실행
+		function registerStaff() {
+			const incident_id = document.getElementById('incident_id').value;
+			const name = document.getElementById('reg-staff-name').value.trim();
+			const dept = document.getElementById('reg-staff-dept').value.trim();
+			const phone = document.getElementById('reg-staff-phone').value.trim();
+			const missionEl = document.getElementById('reg-staff-mission');
+			if (!missionEl) {
+				console.error("ID 'reg-staff-mission' 엘리먼트를 찾을 수 없습니다.");
+				return;
+			}
+			const mission = missionEl.value;
+			if(!name) return alert("근무자 이름을 입력해주세요.");
+
+			fetch('/api/staff/register', {
+				method: 'POST',
+				headers: {'Content-Type': 'application/json'},
+				body: JSON.stringify({
+					incident_id: incident_id,
+					shelter_id: currentEditingShelterId,
+					name: name,
+					dept: dept,
+					phone: phone,
+					mission: mission
+				})
+			})
+			.then(r => r.json())
+			.then(data => {
+				if(data.result === 'ok') {
+					// 폼 초기화 및 닫기
+					document.getElementById('reg-staff-name').value = '';
+					document.getElementById('reg-staff-dept').value = '';
+					document.getElementById('reg-staff-phone').value = '';
+					document.getElementById('reg-staff-mission').value = '';
+					toggleStaffForm();
+					
+					// 목록 갱신
+					openDetailPanel(currentEditingShelterId);
+					updateDashboardData();
+				} else {
+					alert("등록 실패: " + data.msg);
+				}
+			})
+			.catch(err => console.error("근무자 등록 에러:", err));
+		}
+
+        // ------------------------------------------------------------
+        // 6. 기능별 로직: 물품 관리
+        // ------------------------------------------------------------
+        function openSupplyPanel() {
+            if (userRole > 2) return alert("관리자 권한이 필요합니다.");
+            closeDetailPanel();
+            document.getElementById('supply-panel').classList.add('open');
+            loadHqSupplies();
+        }
+        function closeSupplyPanel() { document.getElementById('supply-panel').classList.remove('open'); }
+        function loadHqSupplies() {
+            var container = document.getElementById('hq-supply-list');
+            container.innerHTML = "<div class='empty-msg'>불러오는 중...</div>";
+			const incident_id = document.getElementById('incident_id').value;
+            fetch('/api/supplies/hq?incident_id='+incident_id).then(r => r.json()).then(data => {
+                if(data.result === 'ok') renderSupplyCards(data.supplies, data.shelters);
+                else container.innerHTML = "<div class='empty-msg'>오류 발생</div>";
+            });
+        }
+        function addHqSupply() {
+            var name = document.getElementById('new-item-name').value.trim();
+            var qty = document.getElementById('new-item-qty').value;
+            if(!name || !qty) return alert("값을 입력하세요.");
+            
+            fetch('/api/supplies/add_hq', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ item_name: name, quantity: qty })
+            }).then(r => r.json()).then(data => {
+                if(data.result === 'ok') { 
+					//alert(data.msg); 
+					document.getElementById('new-item-name').value=''; 
+					document.getElementById('new-item-qty').value=''; 
+					loadHqSupplies(); 
+				}
+                else alert("실패: " + data.msg);
+            });
+        }
+        function renderSupplyCards(supplies, shelters) {
+			var container = document.getElementById('hq-supply-list');
+			if(!supplies || supplies.length === 0) { 
+				container.innerHTML = "<div class='empty-msg'>재고 없음</div>"; 
+				return; 
+			}
+
+			var options = shelters.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+			
+			container.innerHTML = supplies.map(item => `
+				<div class="supply-card-item">
+					<div class="supply-row-main">
+						<div class="supply-name-group">
+							<span class="supply-name">${item.name}</span>
+						</div>
+						<div class="supply-action-group">
+							<div class="supply-total-box">
+								<span class="supply-total">${item.qty}</span><span class="unit">개</span>
+							</div>
+							<input type="number" id="inp-stock-in-${item.id}" class="mini-input" placeholder="입고량">
+							<button class="btn-mini btn-green" onclick="addHqStock('${item.name}', ${item.id})">입고</button>
+						</div>
+					</div>
+
+					<div class="supply-row-sub">
+						<select id="sel-target-${item.id}" class="mini-select">
+							<option value="">::배분할 구호소 선택::</option>
+							${options}
+						</select>
+						<div class="supply-action-group">
+							<input type="number" id="inp-qty-${item.id}" class="mini-input" placeholder="배분량" min="1" max="${item.qty}">
+							<button class="btn-mini btn-blue" onclick="distributeSupply('${item.name}', ${item.id})">배분</button>
+						</div>
+					</div>
+				</div>
+			`).join('');
+		}
+        function addHqStock(name, id) {
+            var qty = document.getElementById(`inp-stock-in-${id}`).value;
+            if(!qty) return alert("수량 입력");
+            fetch('/api/supplies/add_hq', {
+                method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ item_name: name, quantity: qty })
+            }).then(r => r.json()).then(data => {
+                if(data.result === 'ok') { 
+					//alert("입고 완료"); 
+					loadHqSupplies(); 
+				} else alert(data.msg);
+            });
+        }
+        function distributeSupply(name, id) {
+            var target = document.getElementById(`sel-target-${id}`).value;
+            var qty = document.getElementById(`inp-qty-${id}`).value;
+			var incident_id = document.getElementById('incident_id').value;
+            if(!target || !qty) return alert("정보 입력");
+            if(!confirm(`[${name}] ${qty}개를 배분하시겠습니까?`)) return;
+
+            fetch('/api/supplies/distribute', {
+                method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ incident_id:incident_id, item_name: name, quantity: qty, target_id: target })
+            }).then(r => r.json()).then(data => {
+                if(data.result === 'ok') { 
+					//alert(data.msg); 
+					loadHqSupplies(); 
+				} else alert(data.msg);
+            });
+        }
+
+        // ------------------------------------------------------------
+        // 7. 기타 기능: 사이드바, 알림, 유틸리티
+        // ------------------------------------------------------------
+        function toggleSidebar() {
+            var sb = document.getElementById('sidebar');
+            sb.classList.toggle('collapsed');
+            document.querySelector('.toggle-btn').innerHTML = sb.classList.contains('collapsed') ? '▶' : '◀';
+            setTimeout(() => map.relayout(), 300);
+        }
+
+        function toggleMapVisibility(key) {
+            var item = markerManager[key];
+            if (!item) return;
+            item.visible = !item.visible;
+            item.overlay.setMap(item.visible ? map : null);
+            var ui = document.getElementById('panel-' + key);
+            item.visible ? ui.classList.remove('hidden-map') : ui.classList.add('hidden-map');
+        }
+
+        function toggleStatus(type, id, name) {
+            //if(!confirm(`'${name}' 상태 변경?`)) return;
+            fetch('/api/map/toggle_status', {
+                method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ type: type, id: id })
+            }).then(r => r.json()).then(data => {
+                if(data.result !== 'ok') alert("실패: " + data.msg);
+                // 소켓 update가 처리하므로 여기선 alert 생략 가능
+            });
+        }
+
+        // 알림 패널
+        var isNotiCollapsed = true;
+        function togglePanel(e) {
+            if (e.target.tagName === 'BUTTON') return;
+            var panel = document.getElementById('notification-panel');
+            var icon = document.getElementById('toggle-icon');
+            isNotiCollapsed = !isNotiCollapsed;
+            panel.style.bottom = isNotiCollapsed ? '-140px' : '-1px';
+            icon.innerText = isNotiCollapsed ? '▲' : '▼';
+        }
+        function handleNotification(data) {
+            let saved = JSON.parse(localStorage.getItem('shelter_notifications{{incident_id}}') || '[]');
+			if({{incident_id}}==data.incident_id){
+				saved.unshift(data);
+				if (saved.length > 50) saved.pop();
+				localStorage.setItem('shelter_notifications{{incident_id}}', JSON.stringify(saved));
+				renderNotifications(saved);
+			}
+        }
+        function renderNotifications(dataArray) {
+            var list = document.getElementById('notification-list');
+            if (dataArray.length === 0) { list.innerHTML = '<div class="empty-msg">알림 없음</div>'; return; }
+            list.innerHTML = dataArray.map(d => `
+                <div style="background:white; padding:12px; border-radius:10px; margin-bottom:10px; border-left:5px solid ${d.color||'#3498db'}; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+                    <div style="display:flex; justify-content:space-between;"><strong style="font-size:0.9rem;">${d.icon||''} ${d.message}</strong><small style="color:#999;">${d.time}</small></div>
+                </div>`).join('');
+        }
+        function clearNotifications() { if(confirm('삭제하시겠습니까?')) { localStorage.removeItem('shelter_notifications{{incident_id}}'); renderNotifications([]); } }
+
+        // 경로 그리기
+        function drawPathAndAddToLegend(path, sName, eName) {
+            var color = ROUTE_COLORS[colorIndex++ % ROUTE_COLORS.length];
+            var poly = new kakao.maps.Polyline({ path: path, strokeWeight: 5, strokeColor: color, strokeOpacity: 0.8 });
+            poly.setMap(map);
+            var arrows = createArrowsOnPath(path, color);
+            var rid = `route_${routeCount++}`;
+            routeManager[rid] = { polyline: poly, arrows: arrows, visible: true };
+            
+            var div = document.createElement('div');
+            div.className = 'route-item';
+            div.id = 'legend-' + rid;
+            div.onclick = function() { 
+                var r = routeManager[rid]; r.visible = !r.visible;
+                r.polyline.setMap(r.visible ? map : null);
+                r.arrows.forEach(a => a.setMap(r.visible ? map : null));
+                div.classList.toggle('hidden', !r.visible);
+            };
+            div.innerHTML = `<div class="color-box" style="background:${color};"></div><div><b>${sName}</b> → ${eName}</div>`;
+            document.getElementById('legend-list').appendChild(div);
+			
+        }
+        function createArrowsOnPath(path, color) {
+            var arrows = [];
+            for (var i=0; i<path.length-10; i+=10) {
+                var p1 = path[i], p2 = path[i+5]; if(!p2) continue;
+                var dy = p2.getLat() - p1.getLat(), dx = p2.getLng() - p1.getLng();
+                var ang = Math.atan2(dy, dx) * 180 / Math.PI;
+                var content = `<div class="arrow-overlay" style="color:${color}; transform: rotate(${-ang}deg);">➤</div>`;
+                arrows.push(new kakao.maps.CustomOverlay({ map: map, position: p1, content: content, yAnchor:0.5, xAnchor:0.5 }));
+            }
+            return arrows;
+        }
+
+        // 연결 모드
+        window.startConnectModeId = function(id) {
+            var item = markerManager['assembly_' + id];
+            if(item) {
+                if(currentInfowindow) currentInfowindow.close();
+                pendingSourceNode = item.data;
+                document.getElementById('connect-guide').style.display = 'block';
+            }
+        }
+        window.cancelConnect = function() {
+            pendingSourceNode = null;
+            document.getElementById('connect-guide').style.display = 'none';
+        }
+        function completeConnection(target) {
+            var source = pendingSourceNode;
+            
+            if(confirm(`[${source.name}] ➡️ [${target.name}]\n연결하시겠습니까?`)) {
+                
+                // [변경] URL을 사용자분의 실제 API 주소(/api/map/connect)로 맞춤
+                fetch('/api/map/connect', { 
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'}, 
+                    body: JSON.stringify({ assembly_id: source.id, shelter_id: target.id }) 
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if(data.result === 'ok') {
+                        // 서버가 계산해서 보내준 path_data가 있으면 즉시 그리기
+                        if (data.path_data && data.path_data.length > 0) {
+                            var linePath = data.path_data.map(p => new kakao.maps.LatLng(p.lat, p.lng));
+                            
+                            // 이미 있는 경로 그리기 함수 호출
+                            drawPathAndAddToLegend(linePath, source.name, target.name);
+                        }
+                        
+                        //alert("성공적으로 연결되었습니다.");
+                    } else {
+                        alert("오류: " + data.msg);
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert("서버 통신 오류");
+                });
+            }
+            
+            cancelConnect();
+        }
+
+        // 인포윈도우 (집결지)
+        function openInfoWindow(loc, coords) {
+            if(currentInfowindow) currentInfowindow.close();
+            var content = document.createElement('div');
+            var color = loc.is_active ? '#e74c3c' : '#777';
+            var html = `<div class="iw-container"><span class="iw-title" style="color:${color}">${loc.name}</span>`;
+            if(userRole <= 2) {
+                html += `<div class="iw-controls">`;
+                if(loc.is_active) html += `<button class="iw-btn-action btn-connect" onclick="startConnectModeId(${loc.id})">🔗 구호소 연결</button>`;
+                html += `<button class="iw-btn-action ${loc.is_active?'btn-stop':'btn-start'}" onclick="toggleStatus('${loc.type}',${loc.id},'${loc.name}')">${loc.is_active?'⛔ 운영 중지':'✅ 운영 재개'}</button></div>`;
+            }
+            html += `</div>`;
+            content.innerHTML = html;
+            var iw = new kakao.maps.InfoWindow({ content: content, position: coords, removable: true, zIndex: 10 });
+            iw.open(map); currentInfowindow = iw;
+        }
+
+        // 데이터 갱신 (소켓 수신 시 호출)
+        function updateDashboardData() {
+			const incident_id = document.getElementById('incident_id').value;
+            fetch('/api/map/refresh_data/'+incident_id).then(r => r.json()).then(data => {
+                if(data.result !== 'ok') return;
+                document.getElementById('val-residents').innerText = data.summary.residents;
+                document.getElementById('val-supplies').innerText = data.summary.supplies;
+                document.getElementById('val-shelters').innerText = data.summary.shelters;
+                document.getElementById('val-assemblies').innerText = data.summary.assemblies;
+
+                data.locations.forEach(loc => {
+                    var key = loc.type + '_' + loc.id;
+                    var item = markerManager[key];
+                    if (item) {
+                        item.data.is_active = loc.is_active;
+                        item.data.stat_resident = loc.stat_resident;
+                        item.data.stat_staff = loc.stat_staff;
+                        
+                        // 마커 스타일
+                        loc.is_active ? item.div.classList.remove('grayscale') : item.div.classList.add('grayscale');
+                        
+                        // 패널 스타일
+                        var panelItem = document.getElementById('panel-' + key);
+                        if(panelItem) {
+                            loc.is_active ? panelItem.classList.remove('inactive') : panelItem.classList.add('inactive');
+                            if(loc.type==='shelter' && (loc.stat_resident || loc.stat_staff)) {
+                                panelItem.querySelector('.stat-badge').innerText = `👥 ${loc.stat_resident}명`;
+                                panelItem.querySelector('.staff-badge').innerText = `👮 ${loc.stat_staff}명`;
+                            }
+                        }
+                    }
+                });
+            });
+        }
+        
+        function renderList(eid, arr, tmpl, empty) {
+            var el = document.getElementById(eid);
+            el.innerHTML = (!arr || arr.length==0) ? `<li class="empty-msg">${empty}</li>` : arr.map(i=>`<li>${tmpl(i)}</li>`).join('');
+        }
+
+        // 초기 알림 로드
+        document.addEventListener("DOMContentLoaded", () => {
+            var saved = JSON.parse(localStorage.getItem('shelter_notifications{{incident_id}}') || '[]');
+            renderNotifications(saved);
+        });
+
+        // 우클릭 메뉴
+        if (userRole <= 2) {
+            kakao.maps.event.addListener(map, 'rightclick', function(e) {
+                clickedLat = e.latLng.getLat(); clickedLng = e.latLng.getLng();
+                var m = document.getElementById('contextMenu');
+                m.style.display = 'block'; m.style.left = event.clientX + 'px'; m.style.top = event.clientY + 'px';
+            });
+        }
+        kakao.maps.event.addListener(map, 'click', function() { 
+            document.getElementById('contextMenu').style.display = 'none'; 
+            if(currentInfowindow) currentInfowindow.close(); 
+            closeDetailPanel(); closeSupplyPanel();
+        });
+        
+        // [수정] 우클릭으로 노드 추가 (새로고침 없이 즉시 반영)
+        window.addNode = function(type) {
+            // 1. 컨텍스트 메뉴 숨기기
+			const incident_id = document.getElementById('incident_id').value;
+            document.getElementById('contextMenu').style.display = 'none';
+            
+            var typeName = type === 'shelter' ? '🏥구호소' : '🚩집결지';
+            var name = prompt(`${typeName} 이름을 입력해주세요 :`);
+            
+            if (name) {
+                fetch('/api/map/add_node', {
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ incident_id:incident_id, type: type, name: name, lat: clickedLat, lng: clickedLng })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if(data.result === 'ok') {
+                        // alert(data.msg); // 성공 메시지는 생략하거나 필요 시 주석 해제
+
+                        // 2. [핵심] 새로고침(location.reload) 대신 로컬에서 객체 생성
+                        var newLoc = {
+                            id: data.id,           // 서버에서 리턴받은 ID (app.py에서 id를 리턴해줘야 함)
+                            name: name,
+                            lat: clickedLat,
+                            lng: clickedLng,
+                            type: type,
+                            is_active: true,       // 신규 등록은 기본 활성 상태
+                            route_infos: [],       // 경로 정보 없음
+                            stat_resident: 0,      // 초기값 0
+                            stat_staff: 0          // 초기값 0
+                        };
+
+                        // 3. 전역 locations 배열에 추가 (추후 필터링/검색 등을 위해)
+                        locations.push(newLoc);
+
+                        // 4. 마커 생성 및 좌측 패널 등록 함수 호출
+                        // (이 함수가 지도에 핀도 찍고, 왼쪽 목록에도 추가해 줍니다)
+                        createCustomMarker(new kakao.maps.LatLng(clickedLat, clickedLng), newLoc);
+                        
+                        // 5. 대시보드 통계 즉시 갱신 (선택사항)
+                        //updateDashboardData();
+
+                    } else { 
+                        alert("오류: " + data.msg); 
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert("서버 통신 중 오류가 발생했습니다.");
+                });
+            }
+        };
+		
+		// ============================================================
+        // [New] 이재민 입소 등록 관리 로직
+        // ============================================================
+
+        // 1. 등록 폼 열기/닫기
+        function toggleResidentForm() {
+            if(userRole > 2) return alert("관리자 권한이 필요합니다.");
+            
+            var form = document.getElementById('resident-reg-form');
+            var isClosed = !form.classList.contains('show');
+            
+            if(isClosed) {
+                form.classList.add('show');
+                document.getElementById('reg-res-name').focus(); // 포커스 이동
+            } else {
+                form.classList.remove('show');
+            }
+        }
+
+        // 2. 세대주/세대원 라디오 버튼에 따른 UI 변화
+        function toggleHeadPhoneInput() {
+            var role = document.querySelector('input[name="fam_role"]:checked').value;
+            var headInputDiv = document.getElementById('head-phone-row');
+            
+            if (role === '세대원') {
+                headInputDiv.style.display = 'block';
+            } else {
+                headInputDiv.style.display = 'none';
+                document.getElementById('reg-head-phone').value = ''; // 값 초기화
+            }
+        }
+
+        // 3. 입소 등록 실행 (API 호출)
+        function registerResident() {
+			const incident_id = document.getElementById('incident_id').value;
+			var name = document.getElementById('reg-res-name').value.trim();
+			var age = document.getElementById('reg-res-age').value;
+			var gender = document.getElementById('reg-res-gender').value;
+			var phone = document.getElementById('reg-res-phone').value;
+			var note = document.getElementById('reg-res-note').value;
+			
+			var role = document.querySelector('input[name="fam_role"]:checked').value;
+			var headPhone = document.getElementById('reg-head-phone').value.trim();
+
+			// 유효성 검사
+			if(!name) return alert("이름을 입력해주세요.");
+			if(role === '세대원' && !headPhone) return alert("세대원은 '세대주 연락처' 입력이 필수입니다.");
+
+			fetch('/api/resident/register', {
+				method: 'POST',
+				headers: {'Content-Type': 'application/json'},
+				body: JSON.stringify({
+					incident_id: incident_id,
+					shelter_id: currentEditingShelterId,
+					name: name,
+					age: age,
+					gender: gender,
+					phone: phone,
+					note: note,
+					family_role: role,
+					head_phone: headPhone
+				})
+			})
+			.then(r => r.json())
+			.then(data => {
+				if(data.result === 'ok') {
+					// [추가] 1. 폼 닫기
+					var form = document.getElementById('resident-reg-form');
+					form.classList.remove('show');
+					
+					// 2. 입력창 초기화
+					document.getElementById('reg-res-name').value = '';
+					document.getElementById('reg-res-age').value = '';
+					document.getElementById('reg-res-phone').value = '';
+					document.getElementById('reg-res-note').value = '';
+					document.getElementById('reg-head-phone').value = ''; // 세대주 연락처 초기화 추가
+					
+					// 3. 세대주 모드로 라디오 버튼 리셋
+					document.querySelector('input[name="fam_role"][value="세대주"]').checked = true;
+					toggleHeadPhoneInput(); // 세대주 연락처 입력칸 숨김 처리
+					
+					// 4. 즉시 목록 갱신
+					openDetailPanel(currentEditingShelterId);
+					
+					// 5. 대시보드 통계 갱신 추가 (이재민 수 변동 반영)
+					updateDashboardData();
+				} else {
+					alert("등록 실패: " + data.msg);
+				}
+			})
+			.catch(err => {
+				console.error(err);
+				alert("서버 통신 오류가 발생했습니다.");
+			});
+		}
+		
+		// [New] 이재민 상태 변경 (퇴소/병원)
+        function changeResidentStatus(incident_id, residentId, residentName, status) {
+            let actionName = "";
+            let subMsg = "";
+
+            // 3가지 상태에 따른 텍스트 분기 처리
+            if (status === 'OUT') {
+                actionName = "퇴소(귀가)";
+                subMsg = "관리 목록에서 '퇴소완료' 탭으로 이동됩니다.";
+            } else if (status === 'HOSPITAL') {
+                actionName = "병원 이송";
+                subMsg = "관리 목록에서 '병원이송' 탭으로 이동됩니다.";
+            } else if (status === 'IN') {
+                actionName = "구호소 복귀(재입소)";
+                subMsg = "다시 '입소중' 상태로 변경됩니다.";
+            }
+            if (!confirm(`[${residentName}] 님을 정말 '${actionName}' 처리하시겠습니까?`)) return;
+			
+            fetch('/api/resident/status', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+					incident_id: incident_id,
+                    resident_id: residentId,
+                    shelter_id: currentManagerShelterId || currentEditingShelterId, // 현재 보고 있는 구호소 ID 사용
+                    status: status
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if(data.result === 'ok') {
+                    // alert(data.msg); // (선택사항) 너무 자주 뜨면 귀찮으므로 생략 가능
+                    
+                    // 1. 모달이 열려있다면 모달 데이터 갱신
+                    if(document.getElementById('resident-manager-modal').classList.contains('show')) {
+                        fetchManagerData(); // 현재 페이지/탭 유지하며 리스트 갱신
+                    }
+                    
+                    // 2. 메인 사이드바(구호소 패널)도 열려있다면 갱신
+                    if(currentEditingShelterId) {
+                        openDetailPanel(currentEditingShelterId);
+                    }
+					
+					if(document.getElementById('resident-info-panel').classList.contains('open')) {
+						closeResidentInfoPanel();
+					}
+                    
+                    // 3. 지도 통계 갱신
+                    updateDashboardData();
+                    
+                } else {
+                    alert("처리 실패: " + data.msg);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert("서버 통신 오류");
+            });
+        }
+		// ============================================================
+        // [New] 모달 관리자 (서버 사이드 페이징 적용)
+        // ============================================================
+        
+        // 상태 관리 변수
+        var mgrState = {
+            page: 1,
+            status: 'IN',
+            shelterId: 0,
+            search: ''
+        };
+        
+        // 1. 모달 열기
+        function openManagerModal(shelterId) {
+            var modal = document.getElementById('resident-manager-modal');
+            
+            // 초기값 설정
+            mgrState.shelterId = (typeof shelterId !== 'undefined') ? shelterId : 0;
+            mgrState.page = 1;
+            mgrState.status = 'IN';
+            mgrState.search = '';
+			document.getElementById('mgr-search').value = '';
+            toggleSearchClearBtn();
+
+            // 구호소 드롭다운 구성
+            var select = document.getElementById('mgr-shelter-select');
+            select.innerHTML = '<option value="0">🏢 전체 구호소 통합</option>';
+            locations.forEach(loc => {
+                if(loc.type === 'shelter') {
+                    var option = document.createElement('option');
+                    option.value = loc.id;
+                    option.text = loc.name;
+                    select.appendChild(option);
+                }
+            });
+            select.value = mgrState.shelterId; 
+
+            // 탭 UI 초기화
+            updateTabUI();
+            
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('show'), 10);
+            
+            // 데이터 로드
+            fetchManagerData();
+        }
+
+        function closeManagerModal() {
+            var modal = document.getElementById('resident-manager-modal');
+            modal.classList.remove('show');
+            setTimeout(() => modal.style.display = 'none', 200);
+            
+            // 메인화면 갱신 (변경사항 반영)
+            if(currentEditingShelterId) openDetailPanel(currentEditingShelterId);
+            updateDashboardData();
+        }
+
+        // 2. 서버 데이터 요청 (핵심)
+        function fetchManagerData() {
+            var grid = document.getElementById('mgr-card-grid');
+            grid.innerHTML = '<div style="text-align:center; padding:50px; width:100%; grid-column:1/-1;">⏳ 데이터 불러오는 중...</div>';
+
+            // API 호출 (쿼리스트링 조합)
+            var query = `?page=${mgrState.page}&status=${mgrState.status}&shelter_id=${mgrState.shelterId}&search=${encodeURIComponent(mgrState.search)}`;
+
+            fetch('/api/residents/search' + query)
+            .then(r => r.json())
+            .then(data => {
+                if(data.result === 'ok') {
+                    // 탭 카운트 갱신
+                    if (data.counts) {
+                        document.getElementById('cnt-IN').innerText = data.counts.IN || 0;
+                        document.getElementById('cnt-HOSPITAL').innerText = data.counts.HOSPITAL || 0;
+                        document.getElementById('cnt-OUT').innerText = data.counts.OUT || 0;
+                    }
+                    
+                    // 리스트 렌더링
+                    renderManagerCards(data.list);
+                    // 페이지네이션 렌더링
+                    renderPagination(data.total_pages, data.current_page);
+                } else {
+                    grid.innerHTML = '<div style="text-align:center; padding:50px; color:red;">' + data.msg + '</div>';
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                grid.innerHTML = '<div style="text-align:center; padding:50px; color:red;">서버 통신 오류</div>';
+            });
+        }
+
+        // 3. 카드 렌더링
+        function renderManagerCards(list) {
+            var grid = document.getElementById('mgr-card-grid');
+            
+            if(!list || list.length === 0) {
+                grid.innerHTML = '<div style="text-align:center; padding:50px; width:100%; grid-column:1/-1; color:#999;">표시할 데이터가 없습니다.</div>';
+                return;
+            }
+
+            grid.innerHTML = list.map(item => `
+                <div class="data-card">
+                    <div class="card-title">
+                        <div style="display:flex; align-items:center; gap:5px;">
+                            ${item.name} 
+                            <span style="font-size:13px; font-weight:normal; color:#555;">(${item.gender}, ${item.age})</span>
+                        </div>
+                        ${item.note ? '<span style="font-size:18px; cursor:help; color:#e74c3c;" title="'+item.note+'">⚠️</span>' : ''}
+                    </div>
+                    
+                    <div class="card-meta">
+                        <div style="font-weight:bold; color:#2980b9; margin-bottom:4px;">🏠 ${item.shelter_name}</div>
+                        📞 ${item.phone || '-'} <br>
+                        ${getStatusBadge(item.status, item.time)}
+                    </div>
+                    
+                    ${item.note ? '<div style="font-size:11px; color:#c0392b; background:#fff5f5; padding:4px; border-radius:4px; margin-top:5px;">⚠️ '+item.note+'</div>' : ''}
+
+                    <div class="card-actions">
+                        ${getActionButtons(item.incident_id, item.id, item.name, item.shelter_id)}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 4. 페이지네이션 렌더링
+        function renderPagination(totalPages, currentPage) {
+            var container = document.getElementById('mgr-pagination');
+            container.innerHTML = "";
+            
+            if (totalPages <= 1) return;
+
+            // [이전]
+            if(currentPage > 1) {
+                container.innerHTML += `<button class="page-btn" onclick="goToPage(${currentPage-1})">&lt;</button>`;
+            }
+
+            // [페이지 번호] (간소화)
+            let startPage = Math.max(1, currentPage - 2);
+            let endPage = Math.min(totalPages, currentPage + 2);
+
+            for(var i=startPage; i<=endPage; i++) {
+                var activeClass = (i === currentPage) ? 'active' : '';
+                container.innerHTML += `<button class="page-btn ${activeClass}" onclick="goToPage(${i})">${i}</button>`;
+            }
+
+            // [다음]
+            if(currentPage < totalPages) {
+                container.innerHTML += `<button class="page-btn" onclick="goToPage(${currentPage+1})">&gt;</button>`;
+            }
+        }
+
+        // --- 이벤트 핸들러 ---
+        function switchManagerTab(status) {
+            mgrState.status = status;
+            mgrState.page = 1; 
+            updateTabUI();
+            fetchManagerData();
+        }
+        
+        function updateTabUI() {
+            document.querySelectorAll('.status-tab').forEach(el => el.className = 'status-tab');
+            var activeClass = mgrState.status === 'IN' ? 'active-in' : (mgrState.status === 'HOSPITAL' ? 'active-hosp' : 'active-out');
+            document.getElementById('tab-' + mgrState.status).classList.add(activeClass);
+        }
+
+        function changeManagerShelter() {
+            var select = document.getElementById('mgr-shelter-select');
+            mgrState.shelterId = parseInt(select.value);
+            mgrState.page = 1;
+            fetchManagerData();
+        }
+
+        function searchManagerCards() {
+            mgrState.search = document.getElementById('mgr-search').value;
+            mgrState.page = 1;
+            fetchManagerData();
+        }
+
+        function goToPage(page) {
+            mgrState.page = page;
+            fetchManagerData();
+        }
+
+        // --- 유틸리티 ---
+        function getStatusBadge(status, time) {
+            if (status === 'OUT') return `<span style="color:#7f8c8d;">🚪 퇴소 (${time})</span>`;
+            if (status === 'HOSPITAL') return `<span style="color:#e67e22;">🏥 병원 이송 (${time})</span>`;
+            return `<span style="color:#27ae60;">🕒 ${time} 입소</span>`;
+        }
+
+        // 상태 변경 버튼 (ID 오류 방지를 위해 전역 변수 사용 대신 매개변수로 전달)
+        function getActionButtons(incident_id, resId, resName, shelterId) {
+
+            // 현재 탭 상태에 따라 버튼 분기
+            if(mgrState.status === 'IN') {
+                return `
+                    <button class="btn-action btn-act-orange" onclick="changeResidentStatus(${incident_id}, ${resId}, '${resName}', 'HOSPITAL')">🚑 병원</button>
+                    <button class="btn-action btn-act-gray" onclick="changeResidentStatus(${incident_id}, ${resId}, '${resName}', 'OUT')">🏠 퇴소</button>
+                `;
+            } else {
+                return `
+                    <button class="btn-action btn-act-green" onclick="changeResidentStatus(${incident_id}, ${resId}, '${resName}', 'IN')">🔄 재입소</button>
+                `;
+            }
+        }
+        
+        // --- 기능 실행 (물품 지급) ---
+        function mgrDistribute(resId) {
+            var supId = document.getElementById(`mgr-sup-${resId}`).value;
+            if(!supId) return alert("물품을 선택해주세요.");
+            
+            var formData = new FormData();
+			formData.append('incident_id', document.getElementById('incident_id').value);
+            formData.append('res_id', resId);
+            formData.append('sup_id', supId);
+            formData.append('quantity', 1);
+
+            fetch('/manage_distribute', { method: 'POST', body: formData })
+            .then(r => {
+                if(r.ok) { 
+					//openResidentInfoPanel(resId); 
+					//alert("지급되었습니다."); 
+				} else { alert("지급 실패"); }
+            });
+        }
+		
+		// ============================================================
+        // [New] 검색 UI 제어 함수들
+        // ============================================================
+
+        // 1. 입력 내용에 따라 X 버튼 표시/숨김
+        function toggleSearchClearBtn() {
+            var input = document.getElementById('mgr-search');
+            var btn = document.getElementById('btn-mgr-clear');
+            btn.style.display = (input.value.length > 0) ? 'flex' : 'none';
+        }
+
+        // 2. 엔터키 입력 시 검색 실행
+        function handleSearchEnter(e) {
+            if (e.key === 'Enter') {
+                executeManagerSearch();
+            }
+        }
+
+        // 3. 검색어 초기화 (X 버튼 클릭) -> 전체 목록 로드
+        function clearManagerSearch() {
+            var input = document.getElementById('mgr-search');
+            input.value = '';
+            toggleSearchClearBtn(); // 버튼 숨김
+            
+            // 검색어 없이 검색 실행 (=초기화)
+            executeManagerSearch();
+        }
+
+        // 4. 실제 검색 실행 (서버 요청)
+        function executeManagerSearch() {
+            mgrState.search = document.getElementById('mgr-search').value.trim();
+            mgrState.page = 1; // 검색 시 1페이지로 리셋
+            fetchManagerData();
+        }
+        
+        // ============================================================
+        // [New] 서브 모달 (등록) 제어 로직
+        // ============================================================
+
+        // 1. 등록 모달 열기
+        function openSubModal() {
+            var modal = document.getElementById('resident-add-modal');
+            var shelterSelect = document.getElementById('modal-reg-shelter');
+            
+            // 구호소 목록 채우기
+            shelterSelect.innerHTML = "";
+            locations.forEach(loc => {
+                if(loc.type === 'shelter') {
+                    var opt = document.createElement('option');
+                    opt.value = loc.id;
+                    opt.text = loc.name;
+                    shelterSelect.appendChild(opt);
+                }
+            });
+
+            // 현재 보고 있는 구호소가 '특정 구호소'라면 그걸 기본값으로 선택
+            if (mgrState.shelterId && mgrState.shelterId != 0) {
+                shelterSelect.value = mgrState.shelterId;
+            }
+
+            // 입력창 초기화
+            document.getElementById('modal-reg-name').value = '';
+            document.getElementById('modal-reg-age').value = '';
+            document.getElementById('modal-reg-phone').value = '';
+            document.getElementById('modal-reg-note').value = '';
+            document.getElementById('modal-reg-head-phone').value = '';
+            document.getElementById('modal-reg-fam-role').value = '세대주';
+            toggleModalRegHeadPhone();
+
+            modal.classList.add('open');
+        }
+
+        // 2. 모달 닫기
+        function closeSubModal() {
+            document.getElementById('resident-add-modal').classList.remove('open');
+        }
+
+        // 3. 세대원 선택 시 UI 변경
+        function toggleModalRegHeadPhone() {
+            var role = document.getElementById('modal-reg-fam-role').value;
+            var display = (role === '세대원') ? 'block' : 'none';
+            document.getElementById('modal-reg-head-phone').style.display = display;
+        }
+
+        // 4. [핵심] 등록 실행 (API 호출)
+        function registerResidentManager() {
+            // 입력값 가져오기
+            var shelterId = document.getElementById('modal-reg-shelter').value;
+            var name = document.getElementById('modal-reg-name').value.trim();
+            var age = document.getElementById('modal-reg-age').value.trim();
+            var gender = document.getElementById('modal-reg-gender').value;
+            var phone = document.getElementById('modal-reg-phone').value.trim();
+            var note = document.getElementById('modal-reg-note').value.trim();
+            var famRole = document.getElementById('modal-reg-fam-role').value;
+            var headPhone = document.getElementById('modal-reg-head-phone').value.trim();
+
+            // 유효성 검사
+            if (!shelterId) return alert("등록할 구호소를 선택해주세요.");
+            if (!name) return alert("이름을 입력해주세요.");
+            if (famRole === '세대원' && !headPhone) return alert("세대원은 세대주 연락처가 필수입니다.");
+
+            // API 호출
+            fetch('/api/resident/register', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    shelter_id: shelterId,
+                    name: name,
+                    age: age,
+                    gender: gender,
+                    phone: phone,
+                    notes: note, // app.py API 스펙에 맞춤 (note or notes 확인 필요, 보통 notes)
+                    note: note,  // 혹시 몰라 둘 다 보냄
+                    family_role: famRole,
+                    head_phone: headPhone
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.result === 'ok') {
+                    alert(data.msg);
+                    closeSubModal();     // 등록창 닫기
+                    fetchManagerData();  // 목록 새로고침 (등록된 사람 바로 보이게)
+                    
+                    // 대시보드 통계 갱신
+                    updateDashboardData();
+                } else {
+                    alert("등록 실패: " + data.msg);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert("서버 통신 오류가 발생했습니다.");
+            });
+        }
+		
+		// ============================================================
+        // [New] 이재민 상세 정보 패널 (Drill-down) 로직
+        // ============================================================
+        var currentResidentInfoId = null;
+
+        // [수정] 패널 열기 (애니메이션 적용을 위한 타이밍 조절)
+        function openResidentInfoPanel(resId) {
+            currentResidentInfoId = resId;
+            var panel = document.getElementById('resident-info-panel');
+            
+            panel.style.display = 'flex';
+            setTimeout(() => { panel.classList.add('open'); }, 10);
+            
+            // 로딩 표시
+            document.getElementById('res-info-name').innerText = "로딩 중...";
+            document.getElementById('res-info-dist-list').innerHTML = "<li class='empty-msg'>...</li>";
+            document.getElementById('res-info-history-list').innerHTML = "<li class='empty-msg'>...</li>"; // 이력 로딩
+
+            fetch(`/api/resident/${resId}/info`)
+            .then(r => r.json())
+            .then(data => {
+                if(data.result === 'ok') {
+                    // 1. 기본 정보
+                    document.getElementById('res-info-name').innerText = data.name;
+                    document.getElementById('res-info-gender-age').innerText = `${data.gender}, ${data.age || '?'}세`;
+                    document.getElementById('res-info-phone').innerText = data.phone || '-';
+                    document.getElementById('res-info-note').innerText = data.notes ? `⚠️ ${data.notes}` : '';
+                    
+                    var shelterName = document.getElementById('panel-header-title').innerText; 
+                    document.getElementById('res-info-shelter').innerText = `🏠 ${shelterName}`;
+
+                    // 2. 버튼 연결
+                    document.getElementById('btn-info-hosp').onclick = function() {
+                        changeResidentStatus(data.incident_id, resId, data.name, 'HOSPITAL', currentEditingShelterId);
+                    };
+                    document.getElementById('btn-info-out').onclick = function() {
+                        changeResidentStatus(data.incident_id, resId, data.name, 'OUT', currentEditingShelterId);
+                    };
+
+                    // 3. 물품 지급 드롭다운
+                    var select = document.getElementById('res-info-supply-select');
+                    select.innerHTML = '<option value="">🎁 지급할 물품 선택</option>';
+                    if (data.shelter_supplies && data.shelter_supplies.length > 0) {
+                        data.shelter_supplies.forEach(s => {
+                            var opt = document.createElement('option');
+                            opt.value = s.id;
+                            opt.text = `${s.name} (${s.qty}개 남음)`;
+                            select.appendChild(opt);
+                        });
+                    } else {
+                        var opt = document.createElement('option');
+                        opt.text = "(지급 가능한 물품 없음)";
+                        opt.disabled = true;
+                        select.appendChild(opt);
+                    }
+
+                    document.getElementById('btn-info-distribute').onclick = function() {
+                        distributeToResidentInPanel(resId);
+                    };
+
+                    // 4. 리스트 렌더링
+                    renderDistHistory(data.distributions);
+                    renderStatusHistory(data.history); // [New] 이력 렌더링 호출
+                } else {
+                    alert("정보를 불러올 수 없습니다.");
+                    closeResidentInfoPanel();
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                closeResidentInfoPanel();
+            });
+        }
+
+        // [New] 입퇴소 이력 렌더링 함수
+        function renderStatusHistory(history) {
+			var container = document.getElementById('res-info-history-list');
+			if (!history || history.length === 0) {
+				container.innerHTML = "<li class='empty-msg'>이력이 없습니다.</li>";
+				return;
+			}
+			
+			container.innerHTML = history.map((h, index) => {
+				let html = '';
+				
+				// [CASE A] 특이사항(NOTE)인 경우
+				if (h.status === 'NOTE') {
+					html = `
+						<li class="history-item">
+							<div class="res-list-content" style="flex-direction: column; align-items: flex-start;">
+								<div style="width:100%; display:flex; justify-content:space-between;">
+									<div><span class="note-label">📝 </span> <span style="font-size:11px; color:#999;">${h.time}</span></div>
+									<button class="btn-del-mini" onclick="deleteStatusLog(${h.id})" title="삭제">×</button>
+								</div>
+								<div class="note-content-box">
+									${h.content}
+								</div>
+							</div>
+						</li>
+					`;
+				} 
+				// [CASE B] 일반 상태 변경(입/퇴소/병원)인 경우
+				else {
+					let badgeClass = 'badge-in';
+					let statusText = '입소';
+					let btntext = ''; 
+
+					if (h.status === 'OUT') { badgeClass = 'badge-out'; statusText = '퇴소'; }
+					else if (h.status === 'HOSPITAL') { badgeClass = 'badge-hosp'; statusText = '병원'; }
+
+					// 최초 이력 여부 체크
+					if (index === history.length - 1) {
+						statusText = '최초입소';
+					} else {
+						btntext = `<button class="btn-del-mini" onclick="deleteStatusLog(${h.id})" title="기록 삭제">×</button>`;
+					}
+
+					html = `
+						<li class="history-item">
+							<div class="res-list-content">
+								<div>
+									<span class="history-badge ${badgeClass}">${statusText}</span>
+									<span style="font-weight:500;">${h.shelter_name}</span>
+								</div>
+								<div>
+									<span style="font-size:11px; color:#a0aec0; margin-right:5px;">${h.time}</span>
+									${btntext}
+								</div>
+							</div>
+						</li>
+					`;
+				}
+				return html;
+			}).join('');
+		}
+		
+		// [NEW] 특이사항 저장 함수
+		function addResidentNote() {
+			var input = document.getElementById('res-note-input');
+			var content = input.value.trim();
+			
+			if(!content) return alert("내용을 입력해주세요.");
+			if(!currentResidentInfoId) return;
+
+			var incident_id = document.getElementById('incident_id').value;
+
+			fetch('/api/resident/note/add', {
+				method: 'POST',
+				headers: {'Content-Type': 'application/json'},
+				body: JSON.stringify({
+					incident_id: incident_id,
+					resident_id: currentResidentInfoId,
+					shelter_id: currentEditingShelterId, // 현재 보고있는 구호소 ID 사용
+					content: content
+				})
+			})
+			.then(r => r.json())
+			.then(data => {
+				if(data.result === 'ok') {
+					input.value = ''; // 입력창 초기화
+					openResidentInfoPanel(currentResidentInfoId); // 목록 새로고침
+				} else {
+					alert("저장 실패: " + data.msg);
+				}
+			})
+			.catch(err => console.error(err));
+		}
+
+		// [Tip] 엔터키 입력 시 저장되도록 이벤트 연결
+		document.getElementById('res-note-input').addEventListener("keyup", function(event) {
+			if (event.key === "Enter") {
+				addResidentNote();
+			}
+		});
+
+        // [수정] 패널 닫기 (애니메이션이 끝난 후 숨김 처리)
+        function closeResidentInfoPanel() {
+            var panel = document.getElementById('resident-info-panel');
+            var mainPanel = document.getElementById('detail-panel'); // 구호소 패널
+            
+            // 1. 슬라이드 애니메이션 시작 (닫기)
+            panel.classList.remove('open');
+			
+			panel.style.display = 'none';
+            
+            // [핵심 수정] 구호소 패널이 현재 '열려있는 상태(open 클래스 보유)'일 때만 새로고침 수행
+            // -> X 버튼을 눌러서 구호소 패널을 닫는 중이라면(.remove('open') 직후라면) 실행되지 않음
+            if(currentEditingShelterId && mainPanel.classList.contains('open')) {
+                openDetailPanel(currentEditingShelterId);
+            }
+        }
+
+
+        // 지급 실행
+        function distributeToResidentInPanel(resId) {
+            var supId = document.getElementById('res-info-supply-select').value;
+            if(!supId) return alert("물품을 선택해주세요.");
+
+            var formData = new FormData();
+			formData.append('incident_id', document.getElementById('incident_id').value);
+            formData.append('res_id', resId);
+            formData.append('sup_id', supId);
+            formData.append('quantity', 1);
+
+            fetch('/manage_distribute', { method: 'POST', body: formData })
+            .then(r => {
+                if(r.ok) {
+                    //alert("지급되었습니다.");
+                    // 내역 새로고침
+                    openResidentInfoPanel(resId); 
+					if(currentEditingShelterId) {
+						openDetailPanel(currentEditingShelterId);
+					}
+                } else {
+                    alert("지급 실패 (재고 부족 등)");
+                }
+            });
+        }
+
+        // 지급 이력 렌더링
+        function renderDistHistory(list) {
+			var container = document.getElementById('res-info-dist-list');
+			if(!list || list.length === 0) {
+				container.innerHTML = "<li class='empty-msg'>지급 내역이 없습니다.</li>";
+				return;
+			}
+			
+			container.innerHTML = list.map(d => `
+				<li class="supply-history-item">
+					<div class="res-list-content">
+						<span>${d.item_name} <b style="color:#2980b9;">${d.qty}개</b></span>
+						<div>
+							<span style="color:#a0aec0; font-size:11px; margin-right:5px;">${d.time}</span>
+							<button class="btn-del-mini" onclick="deleteDistLog(${d.id})" title="지급 취소">×</button>
+						</div>
+					</div>
+				</li>
+			`).join('');
+		}
+		
+		// [NEW] 물품 지급 기록 삭제 함수
+		function deleteDistLog(logId) {
+			if(!confirm("해당 물품 지급 내역을 삭제하시겠습니까?\n(재고는 자동으로 복구됩니다)")) return;
+
+			fetch('/api/dist_log/delete', {
+				method: 'POST',
+				headers: {'Content-Type': 'application/json'},
+				body: JSON.stringify({ id: logId })
+			})
+			.then(r => r.json())
+			.then(data => {
+				if(data.result === 'ok') {
+					// 성공 시 패널 새로고침 (현재 열려있는 이재민 ID 기준)
+					if(currentResidentInfoId) openResidentInfoPanel(currentResidentInfoId);
+					if(currentEditingShelterId) openDetailPanel(currentEditingShelterId);
+					// 전체 통계(물품 수량 등) 갱신을 위해 호출
+					//updateDashboardData();
+				} else {
+					alert("삭제 실패: " + data.msg);
+				}
+			})
+			.catch(err => console.error(err));
+		}
+
+		// [NEW] 상태 변경 기록 삭제 함수
+		function deleteStatusLog(logId) {
+			if(!confirm("이 상태 변경 기록을 삭제하시겠습니까?\n(삭제 시 이전 상태가 현재 상태가 됩니다)")) return;
+
+			fetch('/api/status_log/delete', {
+				method: 'POST',
+				headers: {'Content-Type': 'application/json'},
+				body: JSON.stringify({ id: logId })
+			})
+			.then(r => r.json())
+			.then(data => {
+				if(data.result === 'ok') {
+					// 성공 시 패널 새로고침
+					if(currentResidentInfoId) openResidentInfoPanel(currentResidentInfoId);
+					if(currentEditingShelterId) openDetailPanel(currentEditingShelterId);
+					//updateDashboardData();
+				} else {
+					alert("삭제 실패: " + data.msg);
+				}
+			})
+			.catch(err => console.error(err));
+		}
+		
+		// [NEW] 근무자 삭제 함수 추가 (script 태그 맨 아래쪽이나 적절한 곳에 추가)
+			function deleteStaff(id) {
+				// 권한 체크 (UI 레벨)
+				if (userRole > 2) return alert("관리자 권한이 필요합니다.");
+
+				if(!confirm("해당 근무자를 명단에서 삭제하시겠습니까?")) return;
+
+				fetch('/api/staff/delete', {
+					method: 'POST',
+					headers: {'Content-Type': 'application/json'},
+					body: JSON.stringify({ id: id })
+				})
+				.then(r => r.json())
+				.then(data => {
+					if(data.result === 'ok') {
+						// 성공 시 패널 새로고침
+						if(currentEditingShelterId) openDetailPanel(currentEditingShelterId);
+					} else {
+						alert("삭제 실패: " + data.msg);
+					}
+				})
+				.catch(err => console.error(err));
+			}
+    </script>
+</body>
+</html>

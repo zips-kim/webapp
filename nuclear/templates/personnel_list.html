@@ -1,0 +1,477 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    /* [신규] 테이블 헤더 고정 스타일 */
+    #personnelTable thead th {
+        position: sticky;
+        top: 0;
+        background-color: #f8f9fa; /* 헤더 배경색 (table-light와 동일) */
+        z-index: 10; /* 다른 요소보다 위에 오도록 */
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1); /* 살짝 그림자 */
+    }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>📋 방재요원 지정 및 이수 관리</h2>
+    
+    <form class="d-flex gap-2" action="{{ url_for('personnel_list') }}">
+        <select name="target_year" class="form-select fw-bold text-primary" style="width: 140px;" onchange="this.form.submit()">
+            {% for y in years %}
+                <option value="{{ y }}" {% if y == target_year %}selected{% endif %}>{{ y }}년 기준</option>
+            {% endfor %}
+        </select>
+
+        <select name="set_id" class="form-select" style="min-width: 250px;" onchange="this.form.submit()">
+            {% for s in sets %}
+            <option value="{{ s[0] }}" {% if s[0] == current_set_id %}selected{% endif %}>{{ s[1] }}</option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card shadow-sm border-start border-4 border-dark h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <h6 class="text-muted text-uppercase mb-1 small fw-bold">총 대상 인원</h6>
+                        <h2 class="mb-0 fw-bold">{{ stats.total }}명</h2>
+                    </div>
+                    <div class="text-dark opacity-25">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    </div>
+                </div>
+                <div class="d-flex gap-2">
+                    <span class="badge bg-info text-dark border border-info-subtle">
+                        🌱 신규: {{ stats.new }}명
+                    </span>
+                    <span class="badge bg-secondary border border-secondary-subtle">
+                        🔄 보수: {{ stats.refresher }}명
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow-sm border-start border-4 border-success h-100">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="text-success text-uppercase mb-1 small fw-bold">교육 이수 완료</h6>
+                    <h2 class="mb-0 fw-bold text-success">{{ stats.completed }}명</h2>
+                    <small class="text-muted">(미이수: {{ stats.uncompleted }}명)</small>
+                </div>
+                <div class="text-success opacity-25">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow-sm border-start border-4 border-primary h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="text-primary text-uppercase mb-0 small fw-bold">교육 이수율</h6>
+                    <h2 class="mb-0 fw-bold text-primary">{{ stats.rate }}%</h2>
+                </div>
+                <div class="progress" style="height: 10px;">
+                    <div class="progress-bar bg-primary progress-bar-striped progress-bar-animated" 
+                         role="progressbar" 
+                         style="width: {{ stats.rate }}%" 
+                         aria-valuenow="{{ stats.rate }}" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card p-3 mb-3 bg-light border-0">
+    <div class="d-flex gap-2 flex-wrap">
+        <button type="button" class="btn btn-dark" onclick="openAddModal()">
+            👤 개별 등록
+        </button>
+        
+        <div class="vr mx-2"></div>
+        
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#personnelModal">
+            📄 ① 일괄 등록(Excel)
+        </button>
+        
+        <button type="button" class="btn btn-warning text-white" data-bs-toggle="modal" data-bs-target="#trainingModal">
+            🎓 ② 교육 결과 등록
+        </button>
+        
+        <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#deptOrderModal">
+            🔢 부서 순서
+        </button>
+        
+        <a href="{{ url_for('download_excel', set_id=current_set_id, target_year=target_year) }}" class="btn btn-success ms-auto">
+            📥 엑셀 다운로드
+        </a>
+    </div>
+</div>
+
+<div class="card p-3 shadow-sm">
+    <table id="personnelTable" class="table table-bordered table-hover" style="width:100%">
+        <thead class="table-light">
+            <tr>
+                <th class="text-center">부서</th>
+                <th class="text-center">직급</th>
+                <th class="text-center">이름</th>
+                <th class="text-center">연락처</th>
+                <th class="text-center">비상시직위</th>
+                <th class="text-center">지정일자</th>
+                <th class="text-center">교육구분</th>
+                <th class="text-center">이수현황</th>
+                <th class="text-center">최근 교육일</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr>
+                <td>{{ row.dept }}</td>
+                <td>{{ row.position }}</td>
+                <td class="fw-bold text-center">
+                    <a href="javascript:void(0)" onclick="openEditModal({{ row.id }})" 
+                       class="text-decoration-none text-primary fw-bold" title="상세 정보 및 수정">
+                        {{ row.name }}
+                    </a>
+                </td>
+                <td class="text-center">{{ row.phone }}</td>
+                <td class="text-center">{{ row.emergency_role }}</td>
+                <td class="text-center">{{ row.designation_date or '-' }}</td>
+                <td class="text-center">{{ row.edu_type_calc }}</td>
+                <td class="text-center">
+                    {% if '이수' in row.status %}
+                        <span class="badge bg-success rounded-pill">{{ row.status }}</span>
+                    {% elif row.status == '6개월 이내' %}
+                        <span class="badge bg-warning text-dark rounded-pill">6개월 이내</span>
+                    {% else %}
+                        <span class="badge bg-danger rounded-pill bg-opacity-75">미이수</span>
+                    {% endif %}
+                </td>
+                <td class="text-center small">{{ row.training_date or '-' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="modal fade" id="personnelModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ url_for('upload_action') }}" method="post" enctype="multipart/form-data">
+                <input type="hidden" name="type" value="personnel">
+                <div class="modal-header">
+                    <h5 class="modal-title">📄 인사발령 명단 일괄 등록</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">명단 이름 (예: 2026년 상반기 정기인사)</label>
+                        <input type="text" name="set_name" class="form-control" required placeholder="식별하기 쉬운 이름을 입력하세요">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">엑셀 파일 (*.xlsx)</label>
+                        <input type="file" name="file" class="form-control" required accept=".xlsx, .xls">
+                    </div>
+                    <div class="alert alert-info small">
+                        <strong>필수 컬럼:</strong> 이름, 부서(또는 소속), 연락처(또는 휴대전화)<br>
+                        <strong>선택 컬럼:</strong> 직급, 비상시직위, 지정일자, 이메일
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">업로드</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="trainingModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ url_for('upload_action') }}" method="post" enctype="multipart/form-data">
+                <input type="hidden" name="type" value="training">
+                <div class="modal-header">
+                    <h5 class="modal-title">🎓 교육 이수 결과 등록</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">교육 결과 엑셀 파일</label>
+                        <input type="file" name="file" class="form-control" required accept=".xlsx, .xls">
+                    </div>
+                    <div class="alert alert-warning small">
+                        <strong>주의:</strong><br>
+                        - '이름', '부서', '교육일' 컬럼은 필수입니다.<br>
+                        - 휴대폰 번호가 있으면 더 정확하게 매칭됩니다.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-warning text-white">결과 등록</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="deptOrderModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ url_for('upload_action') }}" method="post" enctype="multipart/form-data">
+                <input type="hidden" name="type" value="dept_order">
+                <div class="modal-header">
+                    <h5 class="modal-title">🔢 부서 정렬 순서 등록</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">순서 파일 (엑셀)</label>
+                        <input type="file" name="file" class="form-control" required accept=".xlsx, .xls">
+                        <div class="form-text mt-2">
+                            A열에 부서명을 순서대로 적어서 업로드하면,<br>
+                            명단 조회 시 해당 순서대로 부서가 정렬됩니다.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-secondary">업로드</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="manageModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title" id="modalTitle">👤 요원 정보 관리</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-7 border-end">
+                        <form id="manageForm">
+                            <input type="hidden" name="p_id" id="p_id">
+                            <input type="hidden" name="set_id" value="{{ current_set_id }}">
+                            
+                            <div class="mb-2">
+                                <label class="form-label small fw-bold">부서</label>
+                                <input type="text" class="form-control" name="dept" id="dept" required>
+                            </div>
+                            <div class="row">
+                                <div class="col-6 mb-2">
+                                    <label class="form-label small fw-bold">직급</label>
+                                    <input type="text" class="form-control" name="position" id="position">
+                                </div>
+                                <div class="col-6 mb-2">
+                                    <label class="form-label small fw-bold">이름</label>
+                                    <input type="text" class="form-control" name="name" id="name" required>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-6 mb-2">
+                                    <label class="form-label small fw-bold">연락처</label>
+                                    <input type="text" class="form-control" name="phone" id="phone" placeholder="010-0000-0000">
+                                </div>
+                                <div class="col-6 mb-2">
+                                    <label class="form-label small fw-bold">이메일</label>
+                                    <input type="email" class="form-control" name="email" id="email" placeholder="@korea.kr">
+                                </div>
+                            </div>
+
+                            <div class="mb-2">
+                                <label class="form-label small fw-bold">비상시 직위/임무</label>
+                                <select class="form-select" name="emergency_role" id="emergency_role">
+                                    <option value="">(선택)</option>
+                                    <option value="종합조정반">종합조정반</option>
+                                    <option value="운영지원반">운영지원반</option>
+                                    <option value="자원관리반">자원관리반</option>
+                                    <option value="안전관리반">안전관리반</option>
+                                    <option value="주민보호반">주민보호반</option>
+                                    <option value="의료지원반">의료지원반</option>
+                                    <option value="환경관리반">환경관리반</option>
+                                    <option value="홍보협력반">홍보협력반</option>
+                                    <option value="신성동">신성동</option>
+                                    <option value="구즉동">구즉동</option>
+                                    <option value="관평동">관평동</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">방재요원 지정일자</label>
+                                <input type="date" class="form-control" name="designation_date" id="designation_date">
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <button type="button" class="btn btn-primary" onclick="saveData()">💾 저장하기</button>
+                                <button type="button" class="btn btn-outline-danger btn-sm mt-2" id="btnDelete" onclick="deletePerson()">
+                                    🗑️ 명단에서 삭제
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="col-md-5" id="historySection">
+                        <h6 class="text-success fw-bold mb-3">🎓 교육 이력 (최근 5년)</h6>
+                        <div class="table-responsive bg-white border rounded" style="max-height: 350px; overflow-y: auto;">
+                            <table class="table table-sm table-hover mb-0 small text-center">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th>교육일자</th>
+                                        <th>연도</th>
+                                        <th>구분</th>
+                                        <th>시간</th>
+                                        <th>재난</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="historyTableBody">
+                                    </tbody>
+                            </table>
+                        </div>
+                        <div class="mt-2 text-muted" style="font-size: 0.75rem;">
+                            * 자동 매칭 기준: 이메일 일치 (최우선)
+                        </div>
+                    </div>
+
+                    <div class="col-md-7 d-flex align-items-center justify-content-center text-muted" id="newInfoSection" style="display:none;">
+                        <div class="text-center">
+                            <h1 class="display-4">🆕</h1>
+                            <p>새로운 요원을 등록합니다.<br>교육 이력은 저장 후 자동 매칭됩니다.</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+<script>
+    $(document).ready(function () {
+        // [수정] 스크롤 옵션 제거 (브라우저 스크롤 사용)
+        $('#personnelTable').DataTable({
+            "paging": false,
+            "info": true,
+            // "scrollY": "600px",  <-- 제거됨
+            // "scrollCollapse": true, <-- 제거됨
+            "language": {
+                "search": "검색:",
+                "info": "총 _TOTAL_명의 요원",
+                "zeroRecords": "데이터가 없습니다."
+            },
+            "order": [] 
+        });
+    });
+
+    const modalEl = document.getElementById('manageModal');
+    const modal = new bootstrap.Modal(modalEl);
+
+    // 1. [등록] 모달 열기
+    function openAddModal() {
+        $('#manageForm')[0].reset();
+        $('#p_id').val('');
+        $('#email').val(''); // 이메일 초기화
+        
+        $('#modalTitle').text('🆕 신규 요원 등록');
+        $('#btnDelete').hide();
+        $('#historySection').hide();
+        $('#newInfoSection').show();
+        
+        modal.show();
+    }
+
+    // 2. [수정] 모달 열기 (이름 클릭시)
+    function openEditModal(id) {
+        $.get('/api/personnel/' + id, function(data) {
+            const p = data.person;
+            const h = data.history;
+            
+            // 폼 데이터 채우기
+            $('#p_id').val(p.id);
+            $('#dept').val(p.dept);
+            $('#position').val(p.position);
+            $('#name').val(p.name);
+            $('#phone').val(p.phone);
+            $('#email').val(p.email); // 이메일 채우기
+            $('#emergency_role').val(p.emergency_role);
+            $('#designation_date').val(p.designation_date);
+            
+            // UI 설정
+            $('#modalTitle').text('✏️ 요원 정보 수정');
+            $('#btnDelete').show();
+            $('#newInfoSection').hide();
+            
+            // 이력 테이블 채우기
+            const tbody = $('#historyTableBody');
+            tbody.empty();
+            if (h.length === 0) {
+                tbody.append('<tr><td colspan="5" class="text-muted py-3">이력이 없습니다.</td></tr>');
+            } else {
+                h.forEach(row => {
+                    let safetyMark = row.safety_status === 'O' ? '<span class="text-danger fw-bold">O</span>' : '-';
+                    let html = `
+                        <tr>
+                            <td>${row.training_date}</td>
+                            <td>${row.training_year}</td>
+                            <td>${row.training_type}</td>
+                            <td>${row.hours}</td>
+                            <td>${safetyMark}</td>
+                        </tr>
+                    `;
+                    tbody.append(html);
+                });
+            }
+            
+            modal.show();
+        });
+    }
+
+    // 3. 저장
+    function saveData() {
+        const pId = $('#p_id').val();
+        const url = pId ? '/api/personnel/update' : '/api/personnel/add';
+        const msg = pId ? '수정하시겠습니까?' : '등록하시겠습니까?';
+        
+        if(!$('#name').val()) { alert('이름을 입력해주세요.'); return; }
+        if(!confirm(msg)) return;
+        
+        $.post(url, $('#manageForm').serialize(), function(res) {
+            if(res.status === 'success') {
+                alert(res.msg);
+                location.reload();
+            } else {
+                alert('오류: ' + res.msg);
+            }
+        });
+    }
+
+    // 4. 삭제
+    function deletePerson() {
+        if(!confirm('정말 삭제하시겠습니까?')) return;
+        const pId = $('#p_id').val();
+        
+        $.post('/api/personnel/delete', {p_id: pId}, function(res) {
+            if(res.status === 'success') {
+                alert(res.msg);
+                location.reload();
+            } else {
+                alert('오류: ' + res.msg);
+            }
+        });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,224 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<script src="https://d3js.org/d3.v7.min.js"></script>
+
+<div class="container-fluid px-4 h-100 d-flex flex-column">
+    <div class="d-flex justify-content-between align-items-center my-3">
+        <div>
+            <span class="badge bg-primary me-2">CENTER</span>
+            <h3 class="d-inline fw-bold">"{{ center_label }}" 연관 분석</h3>
+        </div>
+        <div>
+            <a href="javascript:history.back()" class="btn btn-outline-secondary btn-sm">🔙 뒤로가기</a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 flex-grow-1 mb-4" style="overflow: hidden;">
+        <div class="card-body p-0 position-relative" id="graph-container" style="height: 75vh; background: #fdfdfd;">
+            
+            <div class="position-absolute top-0 start-0 m-3 p-3 bg-white bg-opacity-90 rounded shadow-sm border" style="z-index: 10;">
+                <h6 class="fw-bold mb-2 small">범례 <span class="text-muted fw-normal ms-1">(ON/OFF)</span></h6>
+                <div id="legend-container">
+                    </div>
+            </div>
+
+            </div>
+    </div>
+</div>
+
+<script>
+    const nodes = {{ nodes | tojson }};
+    const links = {{ links | tojson }};
+    
+    // 숨겨진 그룹 관리
+    const hiddenGroups = new Set();
+    
+    // 색상 팔레트
+    const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
+
+    // -------------------------------------------------------
+    // [1] 범례(Legend) 데이터 추출 및 생성 (Client-Side)
+    // -------------------------------------------------------
+    const groups = new Map();
+    nodes.forEach(n => {
+        // 그룹 ID와 이름 매핑
+        if (!groups.has(n.group)) {
+            groups.set(n.group, n.form_title);
+        }
+    });
+
+    const legendContainer = document.getElementById('legend-container');
+    
+    // 그룹별로 범례 아이템 생성
+    groups.forEach((title, groupId) => {
+        // 색상 결정 (Center는 빨강, 나머지는 자동)
+        const color = (groupId === 0) ? "#ff5252" : colorScale(groupId);
+        const label = (groupId === 0) ? `🔴 Center (${title})` : title; // Center 구분
+
+        const item = document.createElement('div');
+        item.className = 'd-flex align-items-center mb-1 legend-item';
+        item.style.cursor = 'pointer';
+        item.style.transition = 'all 0.2s';
+        item.onclick = function() { toggleGroup(groupId, this, color); };
+        
+        item.innerHTML = `
+            <span class="d-inline-block rounded-circle me-2" 
+                  style="width: 12px; height: 12px; background-color: ${color};"></span>
+            <span class="small fw-bold">${label}</span>
+        `;
+        legendContainer.appendChild(item);
+        
+        // CSS 변수 설정 (나중에 쓸 수도 있음)
+        document.documentElement.style.setProperty(`--color-${groupId}`, color);
+    });
+
+    // -------------------------------------------------------
+    // [2] D3 그래프 설정
+    // -------------------------------------------------------
+    const width = document.getElementById('graph-container').clientWidth;
+    const height = document.getElementById('graph-container').clientHeight;
+
+    const simulation = d3.forceSimulation(nodes)
+        .force("link", d3.forceLink(links).id(d => d.id).distance(150))
+        .force("charge", d3.forceManyBody().strength(-500))
+        .force("center", d3.forceCenter(width / 2, height / 2))
+        .force("collide", d3.forceCollide().radius(50));
+
+    const svg = d3.select("#graph-container").append("svg")
+        .attr("width", "100%")
+        .attr("height", "100%")
+        .attr("viewBox", [0, 0, width, height])
+        .call(d3.zoom().on("zoom", (event) => {
+            g.attr("transform", event.transform);
+        }));
+
+    svg.append("defs").selectAll("marker")
+        .data(["end"])
+        .enter().append("marker")
+        .attr("id", "arrow")
+        .attr("viewBox", "0 -5 10 10")
+        .attr("refX", 32)
+        .attr("refY", 0)
+        .attr("markerWidth", 6)
+        .attr("markerHeight", 6)
+        .attr("orient", "auto")
+        .append("path")
+        .attr("d", "M0,-5L10,0L0,5")
+        .attr("fill", "#ccc");
+
+    const g = svg.append("g");
+
+    const link = g.append("g")
+        .attr("stroke", "#ccc")
+        .attr("stroke-width", 2)
+        .selectAll("line")
+        .data(links)
+        .join("line")
+        .attr("marker-end", "url(#arrow)");
+
+    const node = g.append("g")
+        .selectAll("g")
+        .data(nodes)
+        .join("g")
+        .call(d3.drag()
+            .on("start", dragstarted)
+            .on("drag", dragged)
+            .on("end", dragended));
+
+    // 노드 원
+    node.append("circle")
+        .attr("r", d => d.is_center ? 25 : 18)
+        .attr("fill", d => d.is_center ? "#ff5252" : colorScale(d.group))
+        .attr("stroke", "#fff")
+        .attr("stroke-width", 3)
+        .style("cursor", "pointer")
+        .style("filter", "drop-shadow(2px 3px 3px rgba(0,0,0,0.2))")
+        .on("click", (e, d) => {
+            if (hiddenGroups.has(d.group)) return; // 숨겨진 노드는 클릭 불가
+
+            if (!d.is_center) {
+                location.href = `/entry/network/${d.id}`;
+            } else {
+                location.href = `/entry/edit/${d.id}`;
+            }
+        });
+
+    // 텍스트 라벨
+    node.append("text")
+        .text(d => d.label)
+        .attr("x", 0)
+        .attr("y", d => d.is_center ? 40 : 32)
+        .attr("text-anchor", "middle")
+        .style("font-size", d => d.is_center ? "16px" : "12px")
+        .style("font-weight", "bold")
+        .style("fill", "#333")
+        .style("pointer-events", "none");
+
+    // 폼 이름 (작게)
+    node.append("text")
+        .text(d => d.form_title)
+        .attr("x", 0)
+        .attr("y", d => d.is_center ? -32 : -25)
+        .attr("text-anchor", "middle")
+        .style("font-size", "10px")
+        .style("fill", "#666")
+        .style("pointer-events", "none");
+
+    simulation.on("tick", () => {
+        link
+            .attr("x1", d => d.source.x)
+            .attr("y1", d => d.source.y)
+            .attr("x2", d => d.target.x)
+            .attr("y2", d => d.target.y);
+        node.attr("transform", d => `translate(${d.x},${d.y})`);
+    });
+
+    // ----------------------------------------------------
+    // [3] 토글 기능 구현
+    // ----------------------------------------------------
+    window.toggleGroup = function(groupId, element, originalColor) {
+        if (hiddenGroups.has(groupId)) {
+            hiddenGroups.delete(groupId); // 보이기
+            element.style.opacity = "1";
+            element.style.textDecoration = "none";
+            element.querySelector('.rounded-circle').style.backgroundColor = originalColor;
+        } else {
+            hiddenGroups.add(groupId); // 숨기기
+            element.style.opacity = "0.4";
+            element.style.textDecoration = "line-through";
+            element.querySelector('.rounded-circle').style.backgroundColor = "#ccc";
+        }
+        updateVisibility();
+    };
+
+    function updateVisibility() {
+        // 노드 투명도
+        node.style("opacity", d => hiddenGroups.has(d.group) ? 0.05 : 1)
+            .style("pointer-events", d => hiddenGroups.has(d.group) ? "none" : "all");
+
+        // 링크 투명도
+        link.style("opacity", d => {
+            if (hiddenGroups.has(d.source.group) || hiddenGroups.has(d.target.group)) {
+                return 0.05;
+            }
+            return 1;
+        });
+    }
+
+    function dragstarted(event, d) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+    }
+    function dragged(event, d) {
+        d.fx = event.x;
+        d.fy = event.y;
+    }
+    function dragended(event, d) {
+        if (!event.active) simulation.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+    }
+</script>
+{% endblock %}

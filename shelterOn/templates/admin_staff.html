@@ -1,0 +1,102 @@
+{% extends "layout.html" %}
+
+
+{% block content %}
+
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2 style="margin: 0;">👷 근무자 관리 (근무명령)</h2>
+        <button onclick="openModal('staffAddModal')" style="background:#3498db; width:auto; padding: 10px 20px; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">➕ 근무명령 등록</button>
+    </div>
+    
+    <div style="padding: 15px; background: #e3f2fd; border-radius: 8px; margin-bottom: 20px; border: 1px solid #bbdefb; font-size: 0.9rem; color: #0d47a1;">
+        <strong>💡 근무 명령 시스템이란?</strong><br>
+        관리자가 사전에 현장에 투입될 인원의 <strong>[이름, 소속, 구호소, 임무]</strong>를 등록해두는 기능입니다.<br>
+        현장 근무자는 공용 아이디(<strong>staff</strong>)로 로그인 후, 본인의 이름을 선택하여 근무를 시작합니다.
+    </div>
+
+    <div class="mobile-card-container">
+        {% for staff in staff_list %}
+        <div class="data-card" style="{{ 'border-left: 5px solid #27ae60;' if staff.is_working else 'border-left: 5px solid #95a5a6;' }}">
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div class="card-title" style="font-size: 1.1rem;">
+                    {{ staff.name }}
+                    <span style="font-size: 0.8rem; font-weight: normal; color: #666; margin-left: 5px;">({{ staff.dept }})</span>
+                </div>
+                {% if staff.is_working %}
+                <span style="background: #27ae60; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold;">근무중</span>
+                {% else %}
+                <span style="background: #95a5a6; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold;">대기중</span>
+                {% endif %}
+            </div>
+
+            <div class="card-info" style="margin-top: 10px;">
+                <strong>🏛️ 배치:</strong> {{ staff.shelter_name }}<br>
+                <strong>📝 임무:</strong> {{ staff.mission }}<br>
+                <strong>📞 연락처:</strong> {{ staff.phone }}
+            </div>
+
+            <div class="card-actions">
+                <a href="/delete_duty_order/{{ staff.id }}" 
+                   onclick="return confirm('이 근무 명령을 삭제하시겠습니까? (근무 중일 경우 강제 로그아웃 됩니다.)')"
+                   style="flex: 1; text-align: center; background: #fff; color: #e53e3e; border: 1px solid #e53e3e; padding: 8px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 0.9rem;">
+                   삭제
+                </a>
+            </div>
+        </div>
+        {% else %}
+        <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">
+            등록된 근무 명령이 없습니다. 신규 등록해주세요.
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div id="staffAddModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal('staffAddModal')">&times;</span>
+        <h3 style="margin-top: 0;">👷 신규 근무명령 등록</h3>
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
+        <form action="/add_duty_order" method="post">
+            <div style="margin-bottom: 10px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">성명</label>
+                <input type="text" name="name" placeholder="근무자 성명" required class="search-input" style="width: 100%; box-sizing: border-box;">
+            </div>
+            
+            <div style="margin-bottom: 10px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">소속 부서</label>
+                <input type="text" name="dept" placeholder="예: 재난안전과" required class="search-input" style="width: 100%; box-sizing: border-box;">
+            </div>
+
+            <div style="margin-bottom: 10px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">연락처</label>
+                <input type="text" name="phone" placeholder="010-0000-0000" required class="search-input" style="width: 100%; box-sizing: border-box;">
+            </div>
+
+            <div style="margin-bottom: 10px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">배치 구호소</label>
+                <select name="shelter_id" required class="search-input" style="width: 100%;">
+                    {% for s in all_shelters %}
+                    <option value="{{ s[0] }}">{{ s[1] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">담당 임무</label>
+                <select name="mission" required class="search-input" style="width: 100%;">
+                    <option value="입소등록">입소등록</option>
+                    <option value="물자관리">물자관리</option>
+                    <option value="시설관리">시설관리</option>
+                    <option value="의료지원">의료지원</option>
+                    <option value="급식지원">급식지원</option>
+                    <option value="총괄관리">총괄관리</option>
+                </select>
+            </div>
+
+            <button type="submit" style="width: 100%; background: #3498db; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer;">등록하기</button>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

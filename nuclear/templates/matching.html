@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>🔗 교육 결과 정밀 매칭 (다중 선택)</h2>
+    <form action="{{ url_for('matching') }}" class="d-flex">
+        <select name="set_id" class="form-select" onchange="this.form.submit()">
+            {% for s in sets %}
+            <option value="{{ s[0] }}" {% if s[0] == current_set_id %}selected{% endif %}>{{ s[1] }}</option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+
+<div class="alert alert-info py-2 small">
+    <strong>💡 필터 적용됨:</strong> 
+    작업 효율을 위해 <strong>[명단에 있는 사람]</strong>과 <strong>[이메일 미등록]</strong> 기록만 보이도록 설정되었습니다.<br>
+    (퇴직자 기록을 보려면 오른쪽 상단의 '📋 명단 있는 사람만' 스위치를 끄세요.)
+</div>
+
+<div class="row" style="height: 650px;">
+    <div class="col-md-4 h-100">
+        <div class="card h-100">
+            <div class="card-header bg-dark text-white">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span>1. 방재요원 ({{ personnel|length }}명)</span>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="filterPersonNoEmail" onchange="applyFilters('person')">
+                        <label class="form-check-label small" for="filterPersonNoEmail">📧 미등록만</label>
+                    </div>
+                </div>
+                <input type="text" id="searchPerson" class="form-control form-control-sm" placeholder="이름 검색...">
+            </div>
+            <div class="card-body p-0" style="overflow-y: auto;">
+                <div class="list-group list-group-flush" id="personList">
+                    {% for p in personnel %}
+                    <button type="button" class="list-group-item list-group-item-action person-item" 
+                            data-id="{{ p.id }}" data-name="{{ p.name }}" data-email="{{ p.email or '' }}">
+                        <div class="d-flex justify-content-between w-100">
+                            <h6 class="mb-1 fw-bold">{{ p.name }}</h6>
+                            <small>{{ p.dept }}</small>
+                        </div>
+                        <small class="text-muted">
+                            {% if p.email %}📧 {{ p.email }}{% else %}<span class="text-danger small fw-bold">(이메일 미등록)</span>{% endif %}
+                        </small>
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 h-100 d-flex flex-column justify-content-center align-items-center px-2">
+        <div class="card p-3 w-100 shadow-sm bg-light border-primary">
+            <h6 class="text-center text-muted mb-3">⚡ 매칭 설정</h6>
+            
+            <div class="mb-2">
+                <label class="form-label small fw-bold">선택된 요원</label>
+                <input type="text" id="dispPerson" class="form-control text-center bg-white" readonly placeholder="-">
+            </div>
+
+            <div class="text-center text-primary my-1">⬇️ 연결 ⬇️</div>
+
+            <div class="mb-3">
+                <label class="form-label small fw-bold">선택된 교육 이력</label>
+                <div class="d-grid text-center">
+                    <span class="badge bg-success fs-6" id="selectedCountBadge">0건 선택됨</span>
+                </div>
+            </div>
+
+            <hr>
+
+            <div class="mb-3">
+                <label class="form-label small fw-bold text-primary">🔗 연결할 이메일</label>
+                <input type="email" id="matchEmail" class="form-control border-primary fw-bold text-center" placeholder="이메일 입력">
+            </div>
+            
+            <button id="btnMatch" class="btn btn-primary w-100" disabled onclick="executeMatch()">
+                매칭 확정
+            </button>
+        </div>
+    </div>
+
+    <div class="col-md-5 h-100">
+        <div class="card h-100">
+            <div class="card-header bg-success text-white">
+                <div class="d-flex justify-content-end gap-3 mb-2">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="filterHistoryCurrentOnly" onchange="applyFilters('history')" checked>
+                        <label class="form-check-label small" for="filterHistoryCurrentOnly">📋 명단 있는 사람만</label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="filterHistoryNoEmail" onchange="applyFilters('history')" checked>
+                        <label class="form-check-label small" for="filterHistoryNoEmail">📧 미등록만</label>
+                    </div>
+                </div>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white text-success border-0 fw-bold">2. 이력</span>
+                    <input type="text" id="searchHistory" class="form-control" placeholder="전체 검색...">
+                    <button class="btn btn-outline-light" type="button" onclick="$('#searchHistory').val('').trigger('keyup')">X</button>
+                </div>
+            </div>
+            <div class="card-body p-0" style="overflow-y: auto;">
+                <div class="list-group list-group-flush" id="historyList">
+                    {% for h in history %}
+                    <div class="list-group-item history-item-row" data-name="{{ h.name }}" data-email="{{ h.email or '' }}">
+                        <div class="d-flex align-items-center">
+                            <div class="me-3">
+                                <input class="form-check-input history-checkbox" type="checkbox" 
+                                       value="{{ h.id }}" id="hist_{{ h.id }}"
+                                       data-email="{{ h.email or '' }}"
+                                       style="transform: scale(1.3); cursor: pointer;">
+                            </div>
+                            <label class="flex-grow-1" for="hist_{{ h.id }}" style="cursor: pointer;">
+                                <div class="d-flex justify-content-between w-100">
+                                    <h6 class="mb-1">
+                                        <span class="text-primary text-decoration-underline fw-bold history-name-trigger" 
+                                              onclick="filterBothSides(event, '{{ h.name }}')"
+                                              title="클릭 시 이 이름으로 양쪽 목록을 검색합니다.">
+                                            {{ h.name }}
+                                        </span> 
+                                        <small class="text-dark fw-normal">({{ h.training_year }})</small>
+                                    </h6>
+                                    <small>{{ h.training_date }}</small>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <small class="text-muted">{{ h.dept }} / {{ h.training_type }}</small>
+                                    {% if h.email %}
+                                        <small class="text-primary">{{ h.email }}</small>
+                                    {% else %}
+                                        <small class="text-danger fw-bold">이메일 없음</small>
+                                    {% endif %}
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let selectedPersonId = null;
+    const personnelNames = new Set();
+
+    // [초기화] 페이지 로드 시 현원 이름 수집 및 필터 적용
+    $(document).ready(function() {
+        // 1. 왼쪽 명단에서 이름 수집 (공백제거)
+        $('.person-item').each(function() {
+            const cleanName = $(this).data('name').toString().replace(/\s+/g, '').toLowerCase();
+            personnelNames.add(cleanName);
+        });
+        
+        console.log("현원 수집 완료: " + personnelNames.size + "명");
+
+        // 2. 필터 적용
+        applyFilters('history');
+    });
+
+    // 통합 필터 함수
+    function applyFilters(target) {
+        let searchText, listItems;
+        
+        // 필터 조건들
+        const isPersonNoEmail = $('#filterPersonNoEmail').is(':checked');
+        const isHistoryNoEmail = $('#filterHistoryNoEmail').is(':checked');
+        const isHistoryCurrentOnly = $('#filterHistoryCurrentOnly').is(':checked');
+
+        if (target === 'person') {
+            searchText = $('#searchPerson').val().toLowerCase();
+            listItems = $('.person-item');
+        } else {
+            searchText = $('#searchHistory').val().toLowerCase();
+            listItems = $('.history-item-row');
+        }
+
+        listItems.each(function() {
+            const text = $(this).text().toLowerCase();
+            const name = $(this).data('name').toString().replace(/\s+/g, '').toLowerCase();
+            const email = $(this).data('email');
+            const hasEmail = (email && email !== 'None' && email.trim() !== '');
+
+            // 1. 검색어 체크
+            const matchText = text.indexOf(searchText) > -1;
+            
+            // 2. 이메일 미등록 필터 체크
+            let matchEmail = true;
+            if (target === 'person' && isPersonNoEmail) matchEmail = !hasEmail;
+            if (target === 'history' && isHistoryNoEmail) matchEmail = !hasEmail;
+
+            // 3. [신규] 현원 일치 여부 체크 (오른쪽 목록만 해당)
+            let matchCurrent = true;
+            if (target === 'history' && isHistoryCurrentOnly) {
+                matchCurrent = personnelNames.has(name);
+            }
+
+            if (matchText && matchEmail && matchCurrent) {
+                $(this).show();
+            } else {
+                $(this).hide();
+            }
+        });
+    }
+
+    // 이벤트 연결
+    $('#searchPerson').on('keyup', function() { applyFilters('person'); });
+    $('#searchHistory').on('keyup', function() { applyFilters('history'); });
+
+    // 양쪽 필터링 함수 (이름 클릭 시)
+    function filterBothSides(event, name) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        // 이름 검색 시에는 필터를 잠시 꺼줍니다 (안 그러면 안 보일 수 있음)
+        $('#filterPersonNoEmail').prop('checked', false); 
+        $('#filterHistoryNoEmail').prop('checked', false);
+        // 단, '현원만 보기'는 유지해도 됨 (어차피 현원 이름을 클릭했을 테니까)
+        
+        $('#searchPerson').val(name);
+        applyFilters('person');
+
+        $('#searchHistory').val(name);
+        applyFilters('history');
+    }
+
+    // 요원 선택 이벤트
+    $('.person-item').click(function() {
+        $('.person-item').removeClass('active bg-dark text-white');
+        $(this).addClass('active bg-dark text-white');
+        
+        selectedPersonId = $(this).data('id');
+        const name = $(this).data('name');
+        const email = $(this).data('email');
+        
+        $('#dispPerson').val(name);
+        if(email && email !== 'None') $('#matchEmail').val(email);
+        else $('#matchEmail').val('');
+        
+        // 자동 검색 시에는 필터 해제
+        $('#searchHistory').val(name);
+        $('#filterHistoryNoEmail').prop('checked', false); 
+        // 현원 필터는 켜놔도 무방함
+        applyFilters('history');
+        autoCheckHistory(name);
+        
+        updateMatchButtonState();
+    });
+
+    // 자동 체크
+    function autoCheckHistory(targetName) {
+        const searchVal = targetName.replace(/\s+/g, '');
+        $('.history-checkbox').prop('checked', false);
+        
+        $('.history-item-row:visible').each(function() {
+            const hName = $(this).data('name').toString().replace(/\s+/g, '');
+            if (hName.includes(searchVal)) {
+                $(this).find('.history-checkbox').prop('checked', true);
+                const hEmail = $(this).find('.history-checkbox').data('email');
+                if(!$('#matchEmail').val() && hEmail && hEmail !== 'None') {
+                    $('#matchEmail').val(hEmail);
+                }
+            }
+        });
+        updateSelectedCount();
+    }
+
+    $(document).on('change', '.history-checkbox', function() {
+        updateSelectedCount();
+        updateMatchButtonState();
+    });
+
+    function updateSelectedCount() {
+        const checkedCount = $('.history-checkbox:checked:visible').length;
+        $('#selectedCountBadge').text(checkedCount + "건 선택됨");
+    }
+
+    function updateMatchButtonState() {
+        const email = $('#matchEmail').val();
+        const checkedCount = $('.history-checkbox:checked:visible').length;
+        if (selectedPersonId && checkedCount > 0) {
+            $('#btnMatch').prop('disabled', false);
+        } else {
+            $('#btnMatch').prop('disabled', true);
+        }
+    }
+    
+    $('#matchEmail').on('keyup', function() { updateMatchButtonState(); });
+
+    // 매칭 실행
+    function executeMatch() {
+        const email = $('#matchEmail').val().trim();
+        if(!email) { alert('연결할 이메일을 입력해주세요!'); $('#matchEmail').focus(); return; }
+
+        const selectedIds = [];
+        $('.history-checkbox:checked:visible').each(function() {
+            selectedIds.push($(this).val());
+        });
+
+        if(selectedIds.length === 0) { alert('선택된 교육 이력이 없습니다.'); return; }
+        if(!confirm(`선택된 ${selectedIds.length}건의 교육 이력을\n이메일 [${email}]로 연결하시겠습니까?`)) return;
+
+        $.post('/api/confirm_match', {
+            p_id: selectedPersonId,
+            email: email,
+            h_ids: selectedIds.join(',')
+        }, function(res) {
+            if(res.status === 'success') {
+                alert(res.msg);
+                location.reload(); 
+            } else {
+                alert('오류: ' + res.msg);
+            }
+        });
+    }
+</script>
+{% endblock %}

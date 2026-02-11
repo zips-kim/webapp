@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>근무 명령 선택 - 유성쉘터</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="flex-center-body">
+    <div class="mw-500">
+        <div class="text-center mb-20">
+            <h2 style="color: #2c3e50; margin: 0;">👷 근무 명령 선택</h2>
+            <p style="color: #666; font-size: 0.95rem;">관리자가 등록한 본인의 이름을 선택하여 근무를 시작하세요.</p>
+        </div>
+
+        {% if orders_by_shelter %}
+            {% for shelter_name, orders in orders_by_shelter.items() %}
+            <div class="shelter-group">
+                <div class="shelter-header">
+                    <span>🏛️ {{ shelter_name }}</span>
+                    <span style="font-size: 0.8rem; background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 10px;">{{ orders|length }}명 대기</span>
+                </div>
+                {% for order in orders %}
+                <div class="duty-item" onclick="document.getElementById('form_{{ order.id }}').submit();">
+                    <div>
+                        <div style="font-weight: bold; color: #333; font-size: 1.05rem;">{{ order.name }}</div>
+                        <div style="font-size: 0.85rem; color: #666; margin-top: 4px;">
+                            <span class="duty-badge">{{ order.dept }}</span>
+                            {{ order.mission }}
+                        </div>
+                    </div>
+                    <form id="form_{{ order.id }}" action="/start_work" method="post">
+                        <input type="hidden" name="duty_id" value="{{ order.id }}">
+                        <button type="submit" class="btn-base btn-success btn-sm">근무시작</button>
+                    </form>
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <div style="font-size: 30px; margin-bottom: 10px;">📭</div>
+                현재 대기 중인 근무 명령이 없습니다.<br>
+                <small>관리자에게 문의하거나 이미 근무 중인지 확인하세요.</small>
+            </div>
+        {% endif %}
+        
+        <div class="text-center mt-20">
+             <a href="/logout" style="color: #e74c3c; font-weight: bold; text-decoration: none;">로그인 화면으로 돌아가기</a>
+        </div>
+    </div>
+</body>
+</html>

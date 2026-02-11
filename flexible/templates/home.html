@@ -1,0 +1,162 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center my-4">
+        <div>
+            <h1 class="fw-bold text-dark m-0">Dashboard</h1>
+            <p class="text-muted m-0">시스템 현황을 한눈에 확인하세요.</p>
+        </div>
+        <div class="text-end">
+            <span class="badge bg-light text-dark border p-2">{{ current_user.name }}님 환영합니다! 👋</span>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-xl-3 col-md-6">
+            <div class="card shadow-sm border-0 border-start border-primary border-4 h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="text-uppercase fw-bold text-primary small mb-1">Total Systems</div>
+                            <div class="h3 mb-0 fw-bold">{{ form_count }}</div>
+                        </div>
+                        <div class="fs-1 text-gray-300 text-primary opacity-25">📂</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="card shadow-sm border-0 border-start border-success border-4 h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="text-uppercase fw-bold text-success small mb-1">Total Entries</div>
+                            <div class="h3 mb-0 fw-bold">{{ entry_count }}</div>
+                        </div>
+                        <div class="fs-1 text-gray-300 text-success opacity-25">💾</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="card shadow-sm border-0 bg-primary text-white h-100 clickable-card" 
+                 onclick="location.href='/create';" style="cursor: pointer;">
+                <div class="card-body d-flex align-items-center justify-content-between">
+                    <div>
+                        <h6 class="fw-bold mb-1">새 시스템 만들기</h6>
+                        <small class="text-white-50">나만의 데이터 구조 정의</small>
+                    </div>
+                    <span class="fs-3">✨</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="card shadow-sm border-0 bg-dark text-white h-100 clickable-card" 
+                 onclick="location.href='/menus';" style="cursor: pointer;">
+                <div class="card-body d-flex align-items-center justify-content-between">
+                    <div>
+                        <h6 class="fw-bold mb-1">메뉴 구성 관리</h6>
+                        <small class="text-white-50">사이드바 트리 편집</small>
+                    </div>
+                    <span class="fs-3">🌲</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 fw-bold text-primary">📊 시스템별 데이터 보유 현황</h6>
+                </div>
+                <div class="card-body">
+                    {% if chart_labels %}
+                        <canvas id="myBarChart" width="100%" height="50"></canvas>
+                    {% else %}
+                        <div class="text-center py-5 text-muted">
+                            <p>아직 데이터가 없습니다.</p>
+                            <a href="/create" class="btn btn-sm btn-outline-primary">첫 데이터 쌓으러 가기</a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white py-3">
+                    <h6 class="m-0 fw-bold text-secondary">🕒 최근 업데이트 (Latest 5)</h6>
+                </div>
+                <div class="card-body p-0">
+                    {% if recent_list %}
+                        <div class="list-group list-group-flush">
+                            {% for item in recent_list %}
+                            <a href="/list/{{ item.form_id }}" class="list-group-item list-group-item-action p-3">
+                                <div class="d-flex w-100 justify-content-between mb-1">
+                                    <strong class="text-dark">{{ item.form_title }}</strong>
+                                    <small class="text-muted">{{ item.created_at[:10] }}</small>
+                                </div>
+                                <p class="mb-1 text-truncate text-secondary small">
+                                    {{ item.summary }}
+                                </p>
+                            </a>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5 text-muted">
+                            최근 활동이 없습니다.
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer bg-white text-center py-2">
+                    <a href="#" class="small text-decoration-none text-muted">View all history &rarr;</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // app.py에서 넘겨받은 데이터
+    const labels = {{ chart_labels | tojson }};
+    const data = {{ chart_data | tojson }};
+
+    if (labels.length > 0) {
+        const ctx = document.getElementById('myBarChart').getContext('2d');
+        const myBarChart = new Chart(ctx, {
+            type: 'bar', // 'pie'나 'line'으로 바꿔보세요!
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: '데이터 건수',
+                    data: data,
+                    backgroundColor: 'rgba(54, 162, 235, 0.6)', // 파란색 막대
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1,
+                    borderRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false, // 높이 자동 조절
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 } // 정수 단위로 표시
+                    }
+                },
+                plugins: {
+                    legend: { display: false } // 범례 숨김 (깔끔하게)
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}

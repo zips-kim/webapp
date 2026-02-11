@@ -1,0 +1,303 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2 class="fw-bold" style="letter-spacing: -1px;">🕸️ Data Map</h2>
+        <p class="text-muted m-0 small">
+            시스템 간의 데이터 연결 흐름도입니다. 
+            <span class="badge bg-white text-dark border ms-1">⬜ 노드: 데이터 폼</span>
+            <span class="badge bg-white text-primary border border-primary ms-1">🔵 라벨: 연결 관계</span>
+        </p>
+    </div>
+    <div class="btn-group">
+        <button class="btn btn-outline-dark btn-sm rounded-pill px-3" onclick="location.reload()">🔄 새로고침</button>
+    </div>
+</div>
+
+<div class="card shadow-lg border-0 rounded-4 overflow-hidden">
+    <div id="graph-container" class="card-body bg-light p-0" 
+         style="height: 85vh; width: 100%; overflow: hidden; cursor: grab; position: relative; background-image: radial-gradient(#dee2e6 1px, transparent 1px); background-size: 20px 20px;">
+        
+        <pre class="mermaid" style="visibility: hidden; width: 100%; height: 100%;">
+            graph LR
+            classDef cardNode fill:#fff,stroke:#cbd5e1,stroke-width:1px,rx:8,ry:8,color:#1e293b,shadow:md;
+
+            {% for node in nodes %}
+                {% set safe_title = node.title | replace('"', '') | replace("'", "") %}
+                FORM_{{ node.id }}("
+                    <div class='node-card'>
+                        <div class='node-info'>
+                            <div class='node-title'>{{ safe_title }}<br>({{ node.total_count }})</div>
+                        </div>
+                    </div>
+                "):::cardNode;
+                click FORM_{{ node.id }} call showNodeDetail({{ node.id }});
+            {% endfor %}
+
+            {% for link in links %}
+                {% set safe_label = link.label | replace('"', '') | replace("'", "") %}
+                FORM_{{ link.source }} -- "<div class='custom-link-badge' data-index='{{ loop.index0 }}'><span class='link-name'>{{ safe_label }}</span><span class='link-count'>{{ link.count }}</span></div>" --> FORM_{{ link.target }};
+            {% endfor %}
+            
+            {% if not nodes %}
+                INFO[데이터 없음]:::cardNode;
+            {% endif %}
+        </pre>
+    </div>
+</div>
+
+<style>
+    .node-card { display: flex; align-items: center; gap: 12px; padding: 8px 12px; font-family: sans-serif; line-height: 1.2; background-color: #eff6ff; }
+    .node-title { font-size: 14px; font-weight: 700; color: #334155; text-align:center; }
+    
+    .custom-link-badge {
+        display: flex; align-items: center; background-color: #ffffff;
+        border: 1px solid #4e73df; border-radius: 20px; padding: 4px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        cursor: pointer; transition: all 0.2s ease; pointer-events: auto;
+    }
+    .custom-link-badge:hover { transform: scale(1.05); background-color: #f0f4ff; }
+    .link-name { font-size: 11px; font-weight: 600; color: #4e73df; padding: 0 8px; }
+    .link-count { background-color: #4e73df; color: white; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 12px; min-width: 20px; text-align: center; }
+</style>
+
+<div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content shadow border-0 bg-light" style="height: 80vh;">
+            <div class="modal-header py-2 bg-white border-bottom">
+                <h6 class="modal-title fw-bold text-primary" id="modalTitle">Info</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0 position-relative" style="overflow: hidden;">
+                <div id="loadingSpinner" class="position-absolute top-50 start-50 translate-middle text-center" style="display:none;">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2 text-muted small">데이터 관계 분석 중...</p>
+                </div>
+                
+                <div id="modalGraph" style="width: 100%; height: 100%;"></div>
+                
+                <div id="modalContent" class="p-4" style="display:none; max-width: 100%; overflow-y: auto; height: 100%;"></div>
+            </div>
+            <div class="modal-footer bg-white py-2">
+                <a href="#" id="modalLink" class="btn btn-sm btn-primary">📂 목록으로 이동</a>
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">닫기</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+
+    window.nodeData = {
+        {% for node in nodes %}
+            {{ node.id }}: { title: "{{ node.title }}", count: {{ node.total_count }}, fields: {{ node.schema | tojson }} },
+        {% endfor %}
+    };
+    window.linkData = [
+        {% for link in links %}
+            { source: {{ link.source }}, target: {{ link.target }}, key: "{{ link.key }}", label: "{{ link.label }}", count: {{ link.count }} },
+        {% endfor %}
+    ];
+
+    // [기능 1] 노드 클릭 (폼 정보 표시)
+    window.showNodeDetail = function(rawId) {
+        let id = (typeof rawId === 'string') ? parseInt(rawId.replace('FORM_', '')) : rawId;
+        const data = window.nodeData[id];
+        if (!data) return;
+
+        resetModal(`📄 ${data.title}`);
+        
+        document.getElementById('modalGraph').style.display = 'none'; 
+        const contentEl = document.getElementById('modalContent');
+        contentEl.style.display = 'block';
+
+        let html = `<div class="d-flex align-items-center mb-4 p-4 bg-white rounded shadow-sm border"><div class="fs-1 me-3">🗂️</div><div><h4 class="fw-bold mb-1">${data.title}</h4><span class="text-muted">총 ${data.count}개의 데이터가 보관되어 있습니다.</span></div></div>`;
+        html += `<h6 class="fw-bold border-bottom pb-2 mb-3 text-primary">📋 데이터 구조 (Schema)</h6><div class="row g-3">`;
+        data.fields.forEach(f => {
+            let icon = '📄', color='secondary';
+            if(f.type==='number') { icon='🔢'; color='info'; }
+            if(f.type==='date') { icon='📅'; color='warning'; }
+            if(f.type==='relation') { icon='🔗'; color='primary'; }
+            html += `<div class="col-md-6"><div class="p-3 bg-white border rounded d-flex justify-content-between align-items-center shadow-sm"><span>${icon} <span class="fw-bold ms-2">${f.label}</span></span><span class="badge bg-${color} bg-opacity-10 text-${color} border border-${color}">${f.type}</span></div></div>`;
+        });
+        html += `</div>`;
+        
+        contentEl.innerHTML = html;
+        document.getElementById('modalLink').href = "/list/" + id;
+        document.getElementById('modalLink').style.display = 'inline-block';
+        new bootstrap.Modal(document.getElementById('detailModal')).show();
+    };
+
+    // [기능 2] 링크 클릭 (데이터 관계 시각화 - list_network 스타일 적용)
+    window.handleLinkClick = function(index) {
+        const link = window.linkData[index];
+        if (!link) return;
+
+        resetModal(`🔗 연결 분석 : ${link.label}`);
+        const graphEl = document.getElementById('modalGraph');
+        const contentEl = document.getElementById('modalContent');
+        const spinner = document.getElementById('loadingSpinner');
+        
+        contentEl.style.display = 'none';
+        graphEl.style.display = 'block';
+        graphEl.innerHTML = ''; 
+        spinner.style.display = 'block';
+        document.getElementById('modalLink').style.display = 'none';
+        
+        const myModal = new bootstrap.Modal(document.getElementById('detailModal'));
+        myModal.show();
+
+        fetch(`/api/relation_data/${link.source}/${link.key}`)
+            .then(res => res.json())
+            .then(data => {
+                spinner.style.display = 'none';
+                
+                const nodes = new vis.DataSet();
+                const edges = new vis.DataSet();
+                const addedNodes = new Set();
+
+                if (data.rows.length === 0) {
+                    graphEl.innerHTML = `<div class="d-flex h-100 align-items-center justify-content-center text-muted">연결된 데이터가 없습니다.</div>`;
+                    return;
+                }
+
+                data.rows.forEach((row, i) => {
+                    // Source 노드 (파란색, Dot)
+                    const srcId = `src_${row.source.id}`;
+                    if (!addedNodes.has(srcId)) {
+                        nodes.add({
+                            id: srcId,
+                            label: row.source.values.join(' '),
+                            // list_network 스타일 적용 (Dot 모양)
+                            shape: 'dot',
+                            size: 14,
+                            color: { 
+                                background: '#4DABF7', // Blue
+                                border: '#fff' 
+                            },
+                            borderWidth: 2,
+                            font: { size: 14, color: '#333' }
+                        });
+                        addedNodes.add(srcId);
+                    }
+
+                    // Target 노드 (초록색, Dot)
+                    const tgtId = `tgt_${row.target.id}`;
+                    if (!addedNodes.has(tgtId)) {
+                        const isFound = row.target.found;
+                        nodes.add({
+                            id: tgtId,
+                            label: row.target.values.join(' '),
+                            // list_network 스타일 적용
+                            shape: 'dot',
+                            size: 14,
+                            color: { 
+                                background: isFound ? '#51CF66' : '#FF6B6B', // Green or Red
+                                border: '#fff'
+                            },
+                            borderWidth: 2,
+                            font: { size: 14, color: isFound ? '#333' : '#999' }
+                        });
+                        addedNodes.add(tgtId);
+                    }
+
+                    // 엣지 생성 (화살표 있음)
+                    edges.add({
+                        from: srcId, to: tgtId, arrows: 'to',
+                        color: { color: '#adb5bd', opacity: 0.6 },
+                        width: 1.5
+                    });
+                });
+
+                const container = document.getElementById('modalGraph');
+                const networkData = { nodes: nodes, edges: edges };
+                
+                // [핵심] list_network와 동일한 물리 엔진(Physics) 옵션 적용
+                const options = {
+                    nodes: {
+                        shapeProperties: { interpolation: false } // 선명하게
+                    },
+                    physics: {
+                        solver: 'barnesHut', 
+                        barnesHut: {
+                            gravitationalConstant: -2000,
+                            centralGravity: 0.3,
+                            springLength: 120,
+                            springConstant: 0.04,
+                            damping: 0.09,
+                            avoidOverlap: 0.1
+                        },
+                        maxVelocity: 50,
+                        minVelocity: 0.1,
+                        stabilization: { enabled: true, iterations: 1000 }
+                    },
+                    interaction: { hover: true, tooltipDelay: 200, zoomView: true },
+                    layout: { improvedLayout: false } // 계층형(Hierarchy) 해제
+                };
+
+                const network = new vis.Network(container, networkData, options);
+                
+                // 모달 렌더링 완료 후 fit
+                document.getElementById('detailModal').addEventListener('shown.bs.modal', function () {
+                    network.fit();
+                });
+
+                const linkBtn = document.getElementById('modalLink');
+                linkBtn.href = `/list/${link.source}`;
+                linkBtn.innerText = `📂 '${data.source_title}' 데이터 관리`;
+                linkBtn.style.display = 'inline-block';
+            })
+            .catch(err => {
+                spinner.style.display = 'none';
+                graphEl.innerHTML = `<div class="alert alert-danger m-3">${err}</div>`;
+            });
+    }
+
+    function resetModal(title) {
+        document.getElementById('modalTitle').innerText = title;
+        document.getElementById('modalContent').innerHTML = '';
+        document.getElementById('modalGraph').innerHTML = '';
+        document.getElementById('loadingSpinner').style.display = 'none';
+    }
+
+    mermaid.initialize({ startOnLoad: false, securityLevel: 'loose', theme: 'base', flowchart: { curve: 'monotoneX', htmlLabels: true } });
+
+    async function initGraph() {
+        const container = document.getElementById('graph-container');
+        const element = document.querySelector('.mermaid');
+        try {
+            await mermaid.run({ nodes: [element] });
+            
+            element.querySelectorAll('.custom-link-badge').forEach(label => {
+                label.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    window.handleLinkClick(this.getAttribute('data-index'));
+                });
+            });
+
+            const svgElement = element.querySelector('svg');
+            if (svgElement) {
+                svgElement.removeAttribute('style'); 
+                svgElement.setAttribute('width', '100%');
+                svgElement.setAttribute('height', '100%');
+                element.style.visibility = 'visible';
+                
+                const panZoom = svgPanZoom(svgElement, {
+                    zoomEnabled: true, controlIconsEnabled: true, fit: true, center: true, minZoom: 0.1, maxZoom: 10,
+                    beforePan: function(){ container.style.cursor = 'grabbing'; },
+                    onPan: function(){ container.style.cursor = 'grabbing'; },
+                    afterPan: function(){ container.style.cursor = 'grab'; }
+                });
+                window.addEventListener('resize', function(){ panZoom.resize(); panZoom.fit(); panZoom.center(); });
+                setTimeout(() => { panZoom.resize(); panZoom.fit(); panZoom.center(); }, 100);
+            }
+        } catch(e) { console.error(e); }
+    }
+    document.addEventListener('DOMContentLoaded', initGraph);
+</script>
+{% endblock %}

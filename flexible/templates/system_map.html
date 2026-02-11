@@ -1,0 +1,145 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container-fluid px-4 h-100 d-flex flex-column">
+    <div class="d-flex justify-content-between align-items-center my-3">
+        <div>
+            <h4 class="fw-bold m-0">🕸️ Data Map</h4>
+            <small class="text-muted">시스템 간의 데이터 연결 흐름도입니다. 엣지를 클릭하면 상세 관계를 볼 수 있습니다.</small>
+        </div>
+        <div>
+            <span class="badge bg-light text-dark border me-2">⬜ 노드: 데이터 폼</span>
+            <span class="badge bg-primary">🔵 라벨: 연결 관계</span>
+            <a href="/" class="btn btn-outline-secondary btn-sm ms-3">🏠 홈으로</a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 flex-grow-1 mb-4" style="height: 80vh; min-height: 600px;">
+        <div class="card-body p-0 position-relative h-100">
+            <div id="mynetwork" style="width: 100%; height: 100%;"></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="networkModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content bg-light">
+            <div class="modal-header py-2">
+                <h5 class="modal-title fw-bold" id="modalTitle">상세 분석</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0" style="overflow: hidden;">
+                <iframe id="networkFrame" src="" style="width:100%; height:100%; border:none;"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const rawNodes = {{ nodes | tojson }};
+        const rawLinks = {{ links | tojson }};
+
+        // 1. 노드 스타일
+        const nodes = new vis.DataSet(
+            rawNodes.map(node => {
+                const isCode = node.is_code;
+                // 이름에 줄바꿈 추가 (괄호 기준)
+                const label = node.label.replace(/\(/, '\n('); 
+                return {
+                    id: node.id,
+                    label: label,
+                    shape: 'box',
+                    color: {
+                        background: '#eff6ff', // 연한 파랑 배경
+                        border: '#3b82f6',     // 파란 테두리
+                        highlight: { background: '#fff9db', border: '#fcc419' }
+                    },
+                    font: { size: 16, color: '#1e3a8a', face: 'arial', bold: true },
+                    margin: 15, borderWidth: 2, shadow: true,
+                    widthConstraint: { maximum: 150 } // 너비 제한
+                };
+            })
+        );
+
+        // 2. 엣지 스타일
+        const edges = new vis.DataSet(
+            rawLinks.map(link => {
+                return {
+                    id: `edge_${link.source}_${link.target}_${link.field_key}`, // 고유 ID
+                    from: link.source,
+                    to: link.target,
+                    label: link.label, 
+                    // 클릭 시 사용할 데이터
+                    data_src: link.source,
+                    data_tgt: link.target,
+                    data_key: link.field_key,
+                    
+                    arrows: { to: { enabled: true, scaleFactor: 0.8 } },
+                    color: { color: '#1e293b', opacity: 1 },
+                    font: { 
+                        align: 'horizontal', size: 12, color: '#ffffff', 
+                        background: '#3b82f6', strokeWidth: 0, vadjust: -2
+                    },
+                    width: 2,
+                    smooth: { type: 'cubicBezier', forceDirection: 'horizontal', roundness: 0.4 }
+                };
+            })
+        );
+
+        const container = document.getElementById('mynetwork');
+        const data = { nodes: nodes, edges: edges };
+        const options = {
+            physics: {
+                enabled: false, // 스크린샷처럼 정적으로 배치하려면 false 권장 (또는 hierarchical)
+                hierarchicalRepulsion: { nodeDistance: 200 }
+            },
+            layout: {
+                hierarchical: {
+                    enabled: true,
+                    direction: 'LR', // 좌->우 배치
+                    sortMethod: 'directed',
+                    levelSeparation: 250,
+                    nodeSpacing: 100
+                }
+            },
+            interaction: { hover: true }
+        };
+
+        const network = new vis.Network(container, data, options);
+        const modal = new bootstrap.Modal(document.getElementById('networkModal'));
+        const frame = document.getElementById('networkFrame');
+        const title = document.getElementById('modalTitle');
+
+        // [핵심] 클릭 이벤트 핸들러
+        network.on("click", function (params) {
+            // 1. 엣지(연결선) 클릭 -> 상세 데이터 관계도
+            if (params.edges.length > 0 && params.nodes.length === 0) {
+                const edgeId = params.edges[0];
+                const edge = edges.get(edgeId);
+                
+                if (edge.data_src && edge.data_tgt) {
+                    title.innerText = `🔗 연결 상세 분석 : ${edge.label}`;
+                    frame.src = `/network/edge/${edge.data_src}/${edge.data_tgt}/${edge.data_key}`;
+                    modal.show();
+                }
+            }
+            // 2. 노드(폼) 클릭 -> 해당 폼 내부 관계도
+            else if (params.nodes.length > 0) {
+                const formId = params.nodes[0];
+                const node = nodes.get(formId);
+                
+                title.innerText = `📂 ${node.label.replace('\n', '')} : 내부 데이터 맵`;
+                frame.src = `/list/network/${formId}`; 
+                modal.show();
+            }
+        });
+
+        network.on("hoverNode", () => container.style.cursor = 'pointer');
+        network.on("blurNode", () => container.style.cursor = 'default');
+        network.on("hoverEdge", () => container.style.cursor = 'pointer');
+        network.on("blurEdge", () => container.style.cursor = 'default');
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,243 @@
+{% extends "layout.html" %}
+
+{% block title %}🏠 유성쉘터 (Shelter-On){% endblock %}
+
+{% block content %}
+
+        <div class="card">
+			<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2 style="margin: 0;">👥 이재민 관리</h2>
+				
+                <button onclick="openModal('residentAddModal')" style="background:#3498db; width:auto; padding: 10px 20px; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; white-space: nowrap;">➕ 이재민 등록</button>
+
+            </div>
+            
+			<div style="display: flex; gap: 5px; margin-bottom: 15px; background: #eee; padding: 5px; border-radius: 10px;">
+				<a href="{{ url_for('admin_resident', status='IN', search=search_keyword) }}" 
+				   style="flex: 1; text-align: center; padding: 10px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: bold; {{ 'background: white; color: #3498db; box-shadow: 0 2px 4px rgba(0,0,0,0.1);' if current_status == 'IN' else 'color: #666;' }}">
+				   🏠 입소중
+				</a>
+				<a href="{{ url_for('admin_resident', status='HOSPITAL', search=search_keyword) }}" 
+				   style="flex: 1; text-align: center; padding: 10px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: bold; {{ 'background: white; color: #e74c3c; box-shadow: 0 2px 4px rgba(0,0,0,0.1);' if current_status == 'HOSPITAL' else 'color: #666;' }}">
+				   🏥 병원이송
+				</a>
+				<a href="{{ url_for('admin_resident', status='OUT', search=search_keyword) }}" 
+				   style="flex: 1; text-align: center; padding: 10px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: bold; {{ 'background: white; color: #2c3e50; box-shadow: 0 2px 4px rgba(0,0,0,0.1);' if current_status == 'OUT' else 'color: #666;' }}">
+				   🚪 퇴소완료
+				</a>
+			</div>
+
+			<form action="/admin/resident" method="get" id="searchForm" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
+				<input type="hidden" name="status" value="{{ current_status }}">
+				
+				<div style="display: flex; gap: 5px;">
+					<select name="shelter_id" onchange="this.form.submit()" class="search-input" style="flex: 1; margin-bottom: 0; background-color: white;" {% if session.role == 3 %}disabled{% endif %}>
+						<option value="">전체 구호소</option>
+						{% for s in all_shelters_list %}
+						<option value="{{ s[0] }}" {% if current_shelter == s[0]|string %}selected{% endif %}>{{ s[1] }}</option>
+						{% endfor %}
+					</select>
+					
+					<div style="flex: 2; position: relative; display: flex; align-items: center;">
+						<input type="text" name="search" id="searchInput" value="{{ search_keyword }}" placeholder="이름, 연락처 검색..." class="search-input" style="width: 100%; margin-bottom: 0; padding-right: 35px;">
+						
+						{% if search_keyword %}
+						<span onclick="clearSearch()" style="position: absolute; right: 10px; cursor: pointer; color: #999; font-weight: bold; font-size: 18px;">×</span>
+						{% endif %}
+					</div>
+					
+					<button type="submit" style="width: 60px; background: #2c3e50; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">검색</button>
+				</div>
+			</form>
+            
+						
+						<div class="mobile-card-container">
+						{% if residents %}
+							{% set ns = namespace(last_family_id=None) %}
+							{% for r in residents %}
+							
+							
+							
+							<div class="data-card">
+							<!--
+								{# [핵심] 가족 ID가 변경되었는지 체크하여 그룹 헤더 표시 #}
+							{% if r.family_id != ns.last_family_id and r.family_id %}
+								<div style="padding: 10px 15px; background:#e9ecef; border-left: 5px solid #2c3e50; margin: 0px 0 10px 0; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+									<span style="font-weight:bold; color:#2c3e50;">👨‍👩‍👧‍👦 가족 코드: {{ r.family_id }}</span>
+									<button onclick="copyToClipboard('{{ r.family_id }}')" style="font-size:11px; padding:2px 8px; background:#6c757d; color:white; border:none; border-radius:3px;">코드복사</button>
+								</div>
+								{# 변수 업데이트: 에러가 발생하던 부분을 namespace로 대체 #}
+								{% set ns.last_family_id = r.family_id %}
+							{% endif %}
+							-->
+							
+								<div class="card-title">
+									<!--{% if r.family_id and r.family_role %} [{{ r.family_role }}] {% else %} {% endif %}-->
+									{{ r.name }} ({{ r.gender }}, {{ r.age[:4] if r.age else '' }})<br>
+									<small>{{ r.phone }}</small>
+								</div>
+
+								<div class="card-info">{{ r.shelter_name }}</div>
+								<div style="padding: 0px 0px 10px 0px; background: #f8fafc; border-radius: 8px;">
+										
+									<div style="margin: 10px; display: flex; flex-wrap: wrap; gap: 5px;">
+									{% if r.received_items %}
+											{% for item in r.received_items.split(',') %}
+											{% set parts = item.split(':') %}
+											<span style="background: #ebf5fb; color: #2980b9; padding: 2px 8px; border-radius: 12px; font-size: 12px; border: 1px solid #3498db;">
+												{{ parts[0] }}
+												<a href="/cancel_resident_distribute/{{ parts[2] }}" style="color: #e74c3c; text-decoration: none; margin-left: 5px; font-weight: bold;">×</a>
+											</span>
+											{% endfor %}
+										{% endif %}
+									</div>
+									
+									<form action="/distribute" method="post" style="display: flex; gap: 3px;">📦 
+										<input type="hidden" name="res_id" value="{{ r.id }}">
+										<select name="sup_id" required style="flex:1; font-size:12px; height:32px;min-width:50%;">
+											<option value="">+ 구호물품</option>
+											{# 해당 이재민의 구호소 ID(r.shelter_id)에 해당하는 물품만 출력 #}
+											{% if shelter_supplies[r.shelter_id] %}
+												{% for s in shelter_supplies[r.shelter_id] %}
+												<option value="{{ s.id }}">{{ s.name }} ({{ s.quantity }}개 남음)</option>
+												{% endfor %}
+											{% else %}
+												<option disabled>보유 물품 없음</option>
+											{% endif %}
+										</select>
+										<button type="submit" style="width:50px; padding: 2px 6px; background: #27ae60; font-size: 11px;">지급</button>
+									</form>
+									
+								</div>
+								<div class="card-actions" style="display: flex; gap: 5px; width: 100%;">
+			
+									{% if current_status == 'IN' %}
+										<a href="/update_status/list/{{ r.id }}/{{ r.shelter_id }}/HOSPITAL" 
+										   onclick="return confirm('병원으로 이송 처리하시겠습니까?')"
+										   style="flex: 1; text-align: center; background: #2c3e50; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; text-decoration: none; font-size: 13px;">🏥 병원</a>
+										
+										<a href="/update_status/list/{{ r.id }}/{{ r.shelter_id }}/OUT" 
+										   onclick="return confirm('퇴소 처리하시겠습니까?')"
+										   style="flex: 1; text-align: center; background: #fff; color: #e53e3e; border: 1px solid #e53e3e; padding: 10px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 13px;">🚪 퇴소</a>
+									
+									{% else %}
+										<a href="/update_status/list/{{ r.id }}/{{ r.shelter_id }}/IN" 
+										   onclick="return confirm('해당 이재민을 구호소로 복귀(재입소) 처리하시겠습니까?')"
+										   style="flex: 1; text-align: center; background: #27ae60; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; text-decoration: none; font-size: 14px;">
+										   🔄 구호소 복귀(재입소)
+										</a>
+									{% endif %}
+
+								</div>
+							
+						</div>
+							{% endfor %}
+					{% else %}
+						<div>
+							<div colspan="4" style="text-align:center; padding: 20px;">표시할 이재민이 없습니다.</div>
+						</div>
+					{% endif %}
+			
+		</div>
+			
+			<div class="pagination" style="display: flex; justify-content: center; gap: 5px; margin-top: 20px;">
+				{% if page > 1 %}
+				<a href="{{ url_for('admin_resident', page=page-1, status=current_status, shelter_id=current_shelter, search=search_keyword) }}" class="btn-sm" style="text-decoration:none; background:#95a5a6; color:white; padding:5px 10px; border-radius:4px;">&laquo;</a>
+				{% endif %}
+				
+				{% for p in range(1, total_pages + 1) %}
+				<a href="{{ url_for('admin_resident', page=p, status=current_status, shelter_id=current_shelter, search=search_keyword) }}" 
+				   class="btn-sm" 
+				   style="text-decoration:none; padding:5px 10px; border-radius:4px; {% if p == page %}background:#3498db; color:white;{% else %}background:#ecf0f1; color:#333;{% endif %}" >
+				   {{ p }}
+				</a>
+				{% endfor %}
+				
+				{% if page < total_pages %}
+				<a href="{{ url_for('admin_resident', page=page+1, status=current_status, shelter_id=current_shelter, search=search_keyword) }}" class="btn-sm" style="text-decoration:none; background:#95a5a6; color:white; padding:5px 10px; border-radius:4px;">&raquo;</a>
+				{% endif %}
+			</div>
+
+			<div style="text-align: center; margin-top: 10px; color: #666; font-size: 14px;">
+				전체 {{ total_pages }} 페이지 중 {{ page }} 페이지
+			</div>
+        </div>
+
+
+<div id="residentAddModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal('residentAddModal')">&times;</span>
+        <h3>👤 신규 이재민 등록</h3>
+        <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
+        <form action="/add_resident_admin" method="post">
+			<div class="form-group" style="margin-bottom: 15px;">
+				<label style="display:block; margin-bottom:5px; font-weight:bold;">가구 구분</label>
+				<select name="family_role" class="form-control" onchange="toggleHeadPhone(this)" style="width:100%; padding:8px;">
+					<option value="세대주" selected>🏠 세대주 (대표)</option>
+					<option value="세대원">👨‍👩‍👧‍👦 세대원 (가족)</option>
+				</select>
+			</div>
+
+			<div id="headPhoneField" class="form-group" style="display:none; margin-bottom: 15px; background: #f8f9fa; padding: 10px; border-radius: 4px;">
+				<label style="display:block; margin-bottom:5px; font-size:0.9em;">🔗 연결할 세대주 연락처</label>
+				<input type="text" name="head_phone" class="form-control" placeholder="세대주의 핸드폰 번호 입력" style="width:100%; padding:8px;">
+				<small style="color:#666; font-size:0.8em;">* 일치하는 세대주가 있으면 같은 가족으로 묶입니다.</small>
+			</div>
+            <div style="margin-bottom: 10px;">
+                <label style="display:block; font-weight:bold; margin-bottom:5px;">성함</label>
+                <input type="text" name="name" required class="search-input" style="width:100%; box-sizing: border-box;">
+            </div>
+            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                <div style="flex: 1;">
+                    <label style="display:block; font-weight:bold; margin-bottom:5px;">성별</label>
+                    <select name="gender" class="search-input" style="width:100%;">
+                        <option value="남">남성</option>
+                        <option value="여">여성</option>
+                    </select>
+                </div>
+                <div style="flex: 1;">
+                    <label style="display:block; font-weight:bold; margin-bottom:5px;">생년월일(8자리)</label>
+                    <input type="text" name="age" placeholder="19900101" required class="search-input" style="width:100%; box-sizing: border-box;" value="19850102">
+                </div>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <label style="display:block; font-weight:bold; margin-bottom:5px;">연락처</label>
+                <input type="text" name="phone" placeholder="010-0000-0000" required class="search-input" style="width:100%; box-sizing: border-box;"  value="010-1234-5678">
+            </div>
+            <div style="margin-bottom: 10px;">
+                <label style="display:block; font-weight:bold; margin-bottom:5px;">소속 구호소</label>
+                <select name="shelter_id" required class="search-input" style="width:100%;">
+                    {% for s in all_shelters_list %}
+                    <option value="{{ s[0] }}">{{ s[1] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="display:block; font-weight:bold; margin-bottom:5px;">상세 주소</label>
+                <input type="text" name="village" class="search-input" style="width:100%; box-sizing: border-box;">
+            </div>
+            <button type="submit" style="width:100%; background:#27ae60; color:white; border:none; padding:12px; border-radius:8px; font-weight:bold;">등록 및 입소 처리</button>
+        </form>
+    </div>
+</div>
+
+<script>
+// 검색어 초기화 및 목록 새로고침
+function toggleHeadPhone(select) {
+    const field = document.getElementById('headPhoneField');
+    if (select.value === '세대원') {
+        field.style.display = 'block';
+    } else {
+        field.style.display = 'none';
+        field.querySelector('input').value = ''; // 값 초기화
+    }
+}
+function clearSearch() {
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.value = ''; // 입력창 비우기
+        document.getElementById('searchForm').submit(); // 폼 제출 (목록 다시 로드)
+    }
+}
+</script>
+{% endblock %}

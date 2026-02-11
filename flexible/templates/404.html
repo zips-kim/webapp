@@ -1,0 +1,17 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container d-flex flex-column justify-content-center align-items-center" style="min-height: 60vh;">
+    <div class="text-center">
+        <h1 class="display-1 fw-bold text-muted">404</h1>
+        <h2 class="mb-4">페이지를 찾을 수 없습니다 😢</h2>
+        <p class="lead text-secondary mb-5">
+            요청하신 페이지가 삭제되었거나 주소가 잘못 입력되었습니다.<br>
+            입력하신 주소를 다시 확인해 주세요.
+        </p>
+        <a href="/" class="btn btn-primary btn-lg px-5 fw-bold rounded-pill">
+            🏠 홈으로 돌아가기
+        </a>
+    </div>
+</div>
+{% endblock %}

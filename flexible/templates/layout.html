@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Flexible</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { display: flex; min-height: 100vh; }
+        .sidebar { min-width: 250px; background: #343a40; color: white; padding: 20px; }
+        .sidebar a { color: #ddd; text-decoration: none; display: block; padding: 10px; }
+        .sidebar a:hover { background: #495057; color: white; }
+        .content { flex-grow: 1; padding: 30px; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h4><a href="/">🚀 Flexible</a></h4>
+        <hr>
+		{% if current_user.is_authenticated %}
+			<div class="mb-3 p-2 bg-secondary bg-opacity-25 rounded text-center">
+				<span class="d-block small text-muted">접속중</span>
+				<strong>👤 {{ current_user.name }}</strong> 님
+				<a href="/logout" class="btn btn-danger btn-sm w-100 mt-2">로그아웃</a>
+			</div>
+		{% else %}
+			<div class="mb-3">
+				<a href="/login" class="btn btn-primary w-100">🔐 로그인</a>
+			</div>
+		{% endif %}
+		
+        <ul class="nav nav-pills flex-column mb-auto">
+    
+			{% macro render_sidebar(items, level=0) %}
+				{% for item in items %}
+					<li class="nav-item">
+						<a href="{{ item.url }}" 
+						   class="nav-link text-white d-flex align-items-center {{ 'active bg-primary' if request.path == item.url else '' }}"
+						   style="padding-left: {{ 10 + (level * 15) }}px; transition: all 0.2s;">
+							
+							<span class="me-2 opacity-75">
+								{% if item.icon %}
+                                    {# [수정] 이미지 확장자인 경우만 img 태그 사용, 나머지는 텍스트(이모지)로 출력 #}
+                                    {% if '.' in item.icon and item.icon.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico')) %}
+									    <img src="{{ item.icon }}" width="16" height="16"> 
+                                    {% else %}
+                                        {{ item.icon }}
+                                    {% endif %}
+                                {% elif item.children %}📂
+								{% elif item.type == 'system' %}🔗
+								{% else %}📄{% endif %}
+							</span>
+							
+							<span class="text-truncate">{{ item.title }}</span>
+							
+							{% if item.children %}
+								<small class="ms-auto opacity-50" style="font-size: 0.7em;">▼</small>
+							{% endif %}
+						</a>
+
+						{% if item.children %}
+							<ul class="nav flex-column ms-3 border-start border-secondary border-opacity-25 mb-1" style="list-style: none; padding-left: 0;">
+								{{ render_sidebar(item.children, level + 1) }}
+							</ul>
+						{% endif %}
+					</li>
+				{% endfor %}
+			{% endmacro %}
+
+			{{ render_sidebar(menu_tree) }}
+
+			{% if not menu_tree %}
+				<li class="nav-item p-3 text-center text-secondary small">
+					메뉴가 없습니다.<br>
+					<a href="/menus" class="text-white text-decoration-underline">메뉴 설정</a>에서 추가하세요.
+				</li>
+			{% endif %}
+		</ul>
+		{# [권한 적용] 관리자만 '전체 삭제' 메뉴 보임 #}
+		{% if current_user.is_admin %}
+		<hr class="mt-4">
+		<a href="/menus" class="text-warning d-flex align-items-center gap-2">
+			<span>⚙️</span> 메뉴 관리
+		</a>
+		
+		<a href="/create" class="text-secondary d-flex align-items-center gap-2">
+			<span>➕</span> 시스템 정의
+		</a>
+		{% endif %}
+	</div>
+
+    <div class="content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

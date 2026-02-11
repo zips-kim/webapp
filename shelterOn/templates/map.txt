@@ -1,0 +1,1703 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>주민보호시스템</title>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: 'Pretendard', sans-serif; }
+        #layout-container { display: flex; width: 100%; height: 100vh; }
+
+        /* --- [사이드바] --- */
+        #sidebar {
+            width: 280px; top:0px; bottom:-30px; background: white; border-right: 1px solid #ddd;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.05); transition: width 0.3s ease-in-out;
+            display: flex; flex-direction: column; overflow: hidden; position: relative; z-index: 1000;
+        }
+        #sidebar.collapsed { width: 40px; }
+        
+        #sidebar.collapsed .sidebar-header-content,
+        #sidebar.collapsed .sidebar-content-wrapper { opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+
+        .sidebar-vertical-text {
+            position: absolute; top: 60px; left: 50%; transform: translateX(-50%);
+            writing-mode: vertical-rl; text-orientation: upright;
+            font-weight: bold; color: #2c3e50; font-size: 14px; letter-spacing: 5px;
+            white-space: nowrap; opacity: 0; transition: opacity 0.3s 0.2s;
+        }
+        #sidebar.collapsed .sidebar-vertical-text { opacity: 1; pointer-events: auto; }
+
+        .toggle-btn {
+            position: absolute; top: 10px; right: 10px;
+            width: 24px; height: 24px; background: #f1f3f5; border: none; border-radius: 4px;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            z-index: 2001; font-size: 10px; color: #555;
+        }
+        #sidebar.collapsed .toggle-btn { right: 50%; transform: translateX(50%); top: 10px; }
+
+        .sidebar-header { padding: 15px; border-bottom: 1px solid #eee; height: 40px; display: flex; align-items: center;}
+        .sidebar-header-content { display: flex; justify-content: space-between; width: 100%; align-items: center; }
+        .btn-back { text-decoration: none; background: #2c3e50; color: white; padding: 5px 10px; border-radius: 4px; font-size: 11px; }
+        .sidebar-content-wrapper { flex: 1; overflow-y: auto; padding: 10px; }
+        
+		.panel-section-title {
+            font-size: 14px;
+            font-weight: 800; /* 더 굵게 */
+            color: #2d3748;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            padding: 10px 12px; /* 내부 여백 추가 */
+            background: #f7fafc; /* 연한 회색 배경 */
+            border-radius: 8px; /* 둥근 모서리 */
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            /* 왼쪽 포인트 라인 효과 */
+            border-left: 5px solid #cbd5e0; 
+            transition: all 0.2s;
+        }
+
+        /* 구호소 타이틀 강조 (파란색 테마) */
+        .panel-section-title.shelter-title {
+            background: #ebf8ff; /* 아주 연한 파랑 배경 */
+            border-left-color: #3182ce; /* 진한 파랑 포인트 */
+            color: #2b6cb0;
+        }
+
+        /* 집결지 타이틀 강조 (빨간색 테마) */
+        .panel-section-title.assembly-title {
+            background: #fff5f5; /* 아주 연한 빨강 배경 */
+            border-left-color: #e53e3e; /* 진한 빨강 포인트 */
+            color: #c53030;
+        }
+        
+        /* 첫 번째 타이틀 상단 여백 제거 */
+        .panel-section-title:first-child { margin-top: 0; }
+
+        /* ==========================================================================
+           [수정] 좌측 패널 리스트 디자인 개선 (카드형 UI)
+           ========================================================================== */
+        
+        /* 1. 리스트 아이템 (카드 형태) */
+        .marker-item { 
+            display: flex; 
+            align-items: center; 
+            padding: 8px 10px; /* 여백을 넉넉하게 */
+            margin-bottom: 8px; 
+            background: #ffffff; 
+            border: 1px solid #edf2f7; /* 아주 연한 테두리 */
+            border-radius: 12px; /* 둥근 모서리 */
+            cursor: pointer; 
+            transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02); /* 아주 살짝 그림자 */
+        }
+        
+        /* 2. 비활성(운영중지) 상태 스타일 */
+        .marker-item.inactive { 
+            background: #f8f9fa; /* 회색 배경 */
+            border-color: transparent;
+            box-shadow: none;
+            opacity: 0.8; /* 너무 흐리지 않게 조정 */
+        }
+        
+        /* 3. 아이콘 스타일 */
+        .marker-icon { 
+            width: 20px; 
+            height: 28px; 
+            object-fit: contain; 
+            flex-shrink: 0; 
+            margin-right: 12px; /* 텍스트와 간격 벌림 */
+            filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1));
+        }
+
+        /* 비활성 아이콘: 흑백 + 투명도 */
+        .marker-item.inactive .marker-icon { 
+            filter: grayscale(100%) opacity(0.4); 
+        }
+
+        /* 4. 텍스트 정보 영역 */
+        .marker-info-box { 
+            display: flex; 
+            flex-direction: column; /* 위아래 배치 */
+            justify-content: center;
+            flex: 1;
+        }
+
+        .marker-name { 
+            font-size: 14px; 
+            font-weight: 700; /* 조금 더 굵게 */
+            color: #2d3748; 
+            margin-bottom: 5px; /* 이름과 뱃지 사이 간격 */
+            letter-spacing: -0.3px;
+        }
+        
+        /* 비활성 텍스트: 취소선 대신 색상을 연하게 하고 '운영중지' 텍스트로 대체 효과 */
+        .marker-item.inactive .marker-name { 
+            color: #a0aec0; 
+            text-decoration: none; /* 취소선 제거 (지저분해 보임) */
+        }
+
+        /* 5. 통계 뱃지 영역 */
+        .marker-stats { 
+            display: flex; 
+            gap: 6px; /* 뱃지 사이 간격 */
+        }
+		
+		/* [수정] 커스텀 마커 스타일 (위치 보정 속성 제거) */
+        .marker-content {
+            /* position, bottom, left 삭제 -> API가 알아서 잡아줍니다 */
+            width: 30px; 
+            height: 41px; 
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        /* 이미지 스타일 */
+        .marker-content img { 
+            width: 100%; 
+            height: 100%; 
+            display: block; 
+            filter: drop-shadow(2px 3px 3px rgba(0,0,0,0.3)); 
+        }
+
+        /* 호버 효과 */
+        .marker-content:hover,
+        .marker-content.highlight {
+            transform: translateY(-5px); 
+            z-index: 100; 
+        }
+        
+        /* 흑백 필터 */
+        .marker-content.grayscale img { 
+            filter: grayscale(100%) opacity(0.7) drop-shadow(1px 2px 2px rgba(0,0,0,0.2)); 
+        }
+
+        /* 공통 뱃지 스타일 (알약 모양) */
+        .stat-badge, .staff-badge { 
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 8px; 
+            border-radius: 12px; /* 둥글게 */
+            font-size: 11px; 
+            font-weight: 600;
+        }
+
+        /* 입소자 뱃지 (파란색 계열) */
+        .stat-badge { 
+            background: #ebf8ff; 
+            color: #3182ce; 
+        }
+
+        /* 근무자 뱃지 (초록색 계열) */
+        .staff-badge { 
+            background: #f0fff4; 
+            color: #38a169; 
+        }
+        
+        /* 비활성 상태일 때 뱃지도 회색 처리 */
+        .marker-item.inactive .stat-badge, 
+        .marker-item.inactive .staff-badge {
+            background: #edf2f7;
+            color: #a0aec0;
+        }
+
+        /* 숨김 상태 (눈 껐을 때) */
+        .marker-item.hidden-map { 
+            opacity: 0.4; 
+            filter: grayscale(100%);
+        }
+
+        /* --- [지도 영역] --- */
+        #map-area { flex: 1; position: relative; height: 100%; }
+        #map { width: 100%; height: 100%; }
+
+        /* [수정] 목록 아이콘 스타일 */
+        .marker-icon { 
+            width: 20px; 
+            height: 28px; 
+            object-fit: contain; 
+            flex-shrink: 0; 
+            margin-right: 12px; 
+            filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1));
+            cursor: pointer; /* 클릭 가능 커서 */
+            transition: transform 0.2s, filter 0.2s;
+        }
+        
+        /* 아이콘 호버 시 확대 효과 (버튼 느낌) */
+        .marker-icon:hover {
+            transform: scale(1.2); 
+            filter: drop-shadow(0 3px 3px rgba(0,0,0,0.2));
+        }
+
+        /* 비활성 아이콘 */
+        .marker-item.inactive .marker-icon { 
+            filter: grayscale(100%) opacity(0.4); 
+        }
+
+        /* 범례 & 기타 UI */
+        .route-legend-container { position: absolute; top: 5px; right: 40px; z-index: 1000; background: rgba(255, 255, 255, 0.95); padding: 15px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); max-height: 80vh; overflow-y: auto; width: 220px; }
+        .legend-title { font-size: 13px; font-weight: bold; margin-bottom: 8px; border-bottom: 2px solid #eee; padding-bottom: 5px;}
+        .route-item { display: flex; align-items: center; gap: 8px; padding: 6px; margin-bottom: 4px; background: #f8f9fa; border-radius: 4px; cursor: pointer; font-size: 11px; }
+        .color-box { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0;}
+        .arrow-overlay { font-size: 16px; font-weight: 900; text-shadow: 2px 0 0 #fff, -2px 0 0 #fff, 0 2px 0 #fff, 0 -2px 0 #fff; pointer-events: none; opacity: 1; }
+        
+        #contextMenu { position: absolute; display: none; z-index: 3000; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); overflow: hidden; min-width: 140px; }
+        .context-item { padding: 10px 15px; cursor: pointer; font-size: 12px; border-bottom: 1px solid #eee; }
+        .context-item:hover { background: #f1f3f5; }
+
+        .iw-btn { display: block; width: 100%; margin-top: 5px; padding: 4px 0; background: #e67e22; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; }
+        .iw-btn:hover { background: #d35400; }
+        /* [New] 상태 토글 버튼 스타일 */
+        .status-btn { background: #95a5a6; margin-top: 5px; }
+        .status-btn.active-btn { background: #e74c3c; } /* 중지하기 색상 */
+        .status-btn.inactive-btn { background: #2ecc71; } /* 재개하기 색상 */
+		
+		/* [New] 슬라이드 패널 헤더의 토글 스위치 */
+        .header-actions { display: flex; align-items: center; gap: 10px; }
+        
+        /* 아이폰 스타일 토글 스위치 */
+        .toggle-switch { position: relative; display: inline-block; width: 40px; height: 22px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #2ecc71; } /* 활성 녹색 */
+        input:checked + .slider:before { transform: translateX(18px); }
+        .toggle-label { font-size: 12px; color: white; margin-right: 5px;}
+
+        /* [New] 집결지 말풍선(InfoWindow) 내부 스타일 */
+        .iw-container { padding: 5px; text-align: center; min-width: 140px; }
+        .iw-title { font-weight: bold; margin-bottom: 8px; display: block; font-size: 14px; }
+        .iw-controls { display: flex; flex-direction: column; gap: 5px; margin-top: 5px; border-top: 1px solid #eee; padding-top: 5px; }
+        
+        /* 말풍선 버튼들 */
+        .iw-btn-action { 
+            border: none; padding: 6px 0; border-radius: 4px; 
+            font-size: 11px; font-weight: bold; cursor: pointer; color: white; width: 100%;
+            transition: opacity 0.2s;
+        }
+        .iw-btn-action:hover { opacity: 0.9; }
+        .btn-connect { background-color: #e67e22; } /* 주황 */
+        .btn-stop { background-color: #e74c3c; }    /* 빨강 (중지) */
+        .btn-start { background-color: #2ecc71; }   /* 녹색 (재개) */
+
+        #connect-guide { display: none; position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 1000; background: rgba(44, 62, 80, 0.9); color: white; padding: 8px 16px; border-radius: 30px; font-size: 13px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.3); animation: slideUp 0.3s ease-out; }
+        @keyframes slideUp { from { transform: translate(-50%, 20px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+		
+		/* [New] 상세 정보 슬라이드 패널 */
+        #detail-panel {
+            position: absolute;
+            top: 0; left: 0; bottom: 0; /* 지도 영역의 왼쪽 끝에 붙임 */
+            width: 370px;
+            background: white;
+            z-index: 999; /* 지도 컨트롤보다 위에 */
+            box-shadow: 4px 0 15px rgba(0,0,0,0.1);
+            transform: translateX(-100%); /* 기본은 화면 밖(왼쪽)으로 숨김 */
+            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            display: flex; flex-direction: column;
+            border-right: 1px solid #eee;
+        }
+        
+        #detail-panel.open {
+            transform: translateX(0); /* 활성화 시 나타남 */
+        }
+
+        /* 상세 패널 헤더 */
+        /* [수정] 상세 패널 헤더 (정렬 깨짐 방지) */
+        .detail-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            background: #2c3e50;
+            color: white;
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; /* 수직 중앙 정렬 */
+            height: 50px; /* 높이 고정 */
+            flex-shrink: 0;
+        }
+        
+        /* 제목 영역: 너무 길면 ... 처리 */
+        .detail-header-title-box {
+            flex: 1; /* 남은 공간 차지 */
+            min-width: 0; /* flex 자식의 text-overflow 작동 필수 조건 */
+            margin-right: 10px;
+        }
+        .detail-header h3 { 
+            margin: 0; 
+            font-size: 1.1rem; 
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            line-height: 1.2;
+        }
+
+        /* 버튼 영역: 줄어들지 않도록 고정 */
+        .header-actions { 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            flex-shrink: 0; /* 절대 줄어들지 않음 */
+        }
+
+        /* 수정 버튼 스타일 개선 */
+        .btn-edit-mode {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .btn-edit-mode:hover { background: rgba(255, 255, 255, 0.3); }
+
+        /* 저장/취소 버튼 그룹 */
+        .edit-btn-group { display: flex; gap: 5px; }
+        .btn-save-action { background: #27ae60; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; }
+        .btn-cancel-action { background: #95a5a6; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; }
+
+        /* 상세 패널 콘텐츠 */
+        .detail-content { flex: 1; overflow-y: auto; padding: 20px; background: #f8f9fa; }
+
+        .detail-section {
+            background: white; border-radius: 8px; padding: 15px;
+            margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border: 1px solid #edf2f7;
+        }
+        .detail-section h4 {
+            margin: 0 0 12px 0; font-size: 14px; color: #2d3748;
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 2px solid #f1f3f5; padding-bottom: 8px;
+        }
+        
+        /* 리스트 스타일 */
+        .detail-list { list-style: none; padding: 0; margin: 0; font-size: 13px; }
+        .detail-list li {
+            padding: 8px 0; border-bottom: 1px solid #f1f3f5; display: flex; justify-content: space-between;
+        }
+        .detail-list li:last-child { border-bottom: none; }
+        
+        .empty-msg { color: #a0aec0; font-size: 12px; text-align: center; padding: 10px; }
+        
+        /* 뱃지 */
+        .badge-count { background: #e74c3c; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+		
+		/* [New] 상단 대시보드 오버레이 */
+        .dashboard-overlay {
+            position: absolute;
+            top: 5px;
+            left: 35%;
+            transform: translateX(-50%); /* 가로 중앙 정렬 */
+            z-index: 998; /* 지도 및 다른 요소보다 위에 */
+            display: flex;
+            gap: 15px;
+        }
+
+        /* 통계 카드 디자인 */
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(5px);
+            border-radius: 12px;
+            padding: 8px 12px;
+            min-width: 140px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-bottom: 4px solid #ddd; /* 기본 하단 바 */
+            transition: transform 0.2s;
+        }
+        
+        .stat-card:hover { transform: translateY(-3px); }
+
+        /* 카드 내부 텍스트 */
+        .stat-title { font-size: 14px; font-weight: bold; color: #555; margin-bottom: 5px; display: flex; align-items: center; gap: 5px;}
+        .stat-value { font-size: 20px; font-weight: 800; color: #2c3e50; }
+        .stat-unit { font-size: 12px; font-weight: normal; color: #7f8c8d; margin-left: 2px; }
+
+        /* 카드별 포인트 컬러 */
+        .stat-card.blue { border-bottom-color: #3498db; }
+        .stat-card.green { border-bottom-color: #2ecc71; }
+        .stat-card.navy { border-bottom-color: #34495e; }
+        .stat-card.orange { border-bottom-color: #e67e22; }
+		
+		
+#notification-panel {
+    position: fixed;
+    bottom: 0px; /* 네비게이션바 바로 위 */
+    left: -1px; right: -1px;
+    background: #ffffff;
+    border: 1px solid #ced4da;
+    border-radius: 12px 12px 0 0;
+    box-shadow: 0 -5px 20px rgba(0,0,0,0.1);
+    z-index: 1501;
+    display: flex;
+    flex-direction: column;
+    min-height: 45px;
+    max-height: 80vh;
+    height: 150px; /* 기본 높이 */
+    transition: transform 0.3s;
+}
+
+#panel-resizer {
+    height: 45px;
+    background: #2c3e50;
+    color: white;
+    cursor: ns-resize; /* 위아래 드래그 아이콘 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 10px 10px 0 0;
+    position: relative;
+}
+
+.handle-line {
+    width: 40px; height: 4px;
+    background: rgba(255,255,255,0.3);
+    border-radius: 2px;
+    position: absolute; top: 8px;
+}
+
+#notification-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    background: #f8f9fa;
+}
+
+.noti-item {
+    padding: 12px;
+    background: white;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    border-left: 5px solid #3498db;
+    animation: slideIn 0.3s ease-out;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+@keyframes slideIn {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+#supply-panel {
+            position: absolute;
+            top: 0; left: 0; bottom: 0;
+            width: 370px; /* 구호소 패널과 동일 너비 */
+            background: white;
+            z-index: 999; /* 구호소 패널(999)보다 높게 */
+            box-shadow: 4px 0 15px rgba(0,0,0,0.1);
+            transform: translateX(-100%);
+            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            display: flex; flex-direction: column;
+            border-right: 1px solid #eee;
+        }
+        
+        #supply-panel.open { transform: translateX(0); }
+
+        /* 물품 등록(입고) 폼 스타일 */
+        .add-supply-form {
+            background: #ebf8ff; /* 연한 파랑 배경 */
+            padding: 15px;
+            border-bottom: 1px solid #bee3f8;
+            margin-bottom: 5px;
+        }
+        .form-row { display: flex; gap: 5px; margin-bottom: 5px; }
+        .form-row input, .form-row select {
+			min-width: 0;
+            padding: 5px; border: 1px solid #cbd5e0; border-radius: 4px; font-size: 13px;
+        }
+        .btn-add-stock {
+            width: 100%; background: #2b6cb0; color: white; border: none; padding: 8px; 
+            border-radius: 4px; font-weight: bold; cursor: pointer;
+        }
+        .btn-add-stock:hover { background: #2c5282; }
+
+        /* 물품 리스트 (카드형) */
+        .supply-card-item {
+            background: white; border: 1px solid #e2e8f0; border-radius: 8px;
+            padding: 12px; margin-bottom: 10px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .supply-card-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 8px; border-bottom: 2px solid #f1f3f5; padding-bottom: 5px;
+        }
+        .supply-name { font-weight: bold; color: #2d3748; font-size: 14px; }
+        .supply-total { font-weight: 800; color: #3182ce; font-size: 15px; }
+        
+        /* 배분 컨트롤 영역 */
+        .dist-control {
+            display: flex; gap: 5px; align-items: center; background: #f7fafc; padding: 5px; border-radius: 4px;
+        }
+        .dist-select { flex: 1; min-width: 0; padding: 5px;} /* min-width:0 있어야 flex안에서 줄어듦 */
+        .dist-input { width: 50px; text-align: center; padding: 5px;}
+        .btn-dist { 
+            background: #38a169; color: white; border: none; border-radius: 4px; 
+            padding: 5px 8px; font-size: 12px; cursor: pointer; flex-shrink: 0;
+        }
+        .btn-dist:hover { background: #2f855a; }
+		
+		/* 물품 카드 디자인 */
+        .supply-item-card {
+            background: white; padding: 15px; border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #e9ecef;
+        }
+        .supply-head { display: flex; justify-content: space-between; margin-bottom: 10px; font-weight: bold; color: #34495e;}
+        .supply-qty { font-size: 1.2rem; color: #3498db; }
+        
+        .distribute-form {
+            display: flex; gap: 5px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;
+        }
+        .distribute-form select { flex: 1; padding: 5px; border: 1px solid #ddd; border-radius: 4px; }
+        .distribute-form input { width: 60px; padding: 5px; border: 1px solid #ddd; border-radius: 4px; }
+        .btn-distribute {
+            background: #3498db; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;
+        }
+        .btn-distribute:hover { background: #2980b9; }
+
+        /* [New] 구호소 수정용 스타일 */
+        .edit-input { 
+            width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; margin-bottom: 5px;
+        }
+        .btn-edit-action { cursor: pointer; font-size: 12px; padding: 3px 8px; border-radius: 4px; border: none; color: white; margin-left: 5px; }
+        .btn-save { background: #2ecc71; }
+        .btn-cancel { background: #95a5a6; }
+        .cursor-pointer { cursor: pointer; }
+		
+		/* [New] 보기/수정 모드 전환 스타일 */
+        .view-mode { display: block; }
+        .edit-mode { display: none; }
+        
+        /* 부모에 .editing 클래스가 있으면 반대로 동작 */
+        .editing .view-mode { display: none; }
+        .editing .edit-mode { display: block; width: 100%; box-sizing: border-box; }
+
+        /* 정보 테이블 스타일 */
+        .info-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .info-table th { text-align: left; color: #718096; padding: 6px 0; width: 70px; vertical-align: top; }
+        .info-table td { padding: 6px 0; color: #2d3748; font-weight: 500; }
+        
+        /* 인풋 스타일 */
+        .info-input {
+            padding: 5px; border: 1px solid #cbd5e0; border-radius: 4px; font-size: 13px;
+            background: #fff;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="layout-container">
+        <div id="sidebar">
+            <button class="toggle-btn" onclick="toggleSidebar()">◀</button>
+            <div class="sidebar-vertical-text">주민보호시스템</div>
+
+            <div class="sidebar-header">
+                <div class="sidebar-header-content">
+                    <strong style="font-size: 1.1rem;">🗺️ 주민보호시스템</strong>
+                </div>
+            </div>
+            
+            <div class="sidebar-content-wrapper">
+                <div class="panel-section-title">🏥 구호소</div>
+                <div id="shelter-list"></div>
+                
+                <div class="panel-section-title" style="margin-top: 20px;">🚩 집결지</div>
+                <div id="assembly-list"></div>
+            </div>
+        </div>
+
+        <div id="map-area">
+			<div class="dashboard-overlay">
+                <div class="stat-card blue">
+                    <div class="stat-title">👥 현재 이재민</div>
+                    <div class="stat-value">
+                        <span id="val-residents">{{ summary.residents }}</span><span class="stat-unit">명</span>
+                    </div>
+                </div>
+                <div class="stat-card green cursor-pointer" onclick="openSupplyPanel()">
+                    <div class="stat-title">📦 구호물품 (관리)</div>
+                    <div class="stat-value">
+                        <span id="val-supplies">{{ summary.supplies }}</span><span class="stat-unit">개</span>
+                    </div>
+                </div>
+                <div class="stat-card navy">
+                    <div class="stat-title">🏥 운영 구호소</div>
+                    <div class="stat-value">
+                        <span id="val-shelters">{{ summary.shelters }}</span><span class="stat-unit">개소</span>
+                    </div>
+                </div>
+                <div class="stat-card orange">
+                    <div class="stat-title">🚩 운영 집결지</div>
+                    <div class="stat-value">
+                        <span id="val-assemblies">{{ summary.assemblies }}</span><span class="stat-unit">개소</span>
+                    </div>
+                </div>
+            </div>
+			
+			<div id="detail-panel">
+                <div class="detail-header">
+                    <h3 id="panel-header-title">구호소 정보</h3>
+                    
+                    <div class="header-actions">
+                        <button id="btn-edit-mode" class="btn-edit-action" style="background:none; border:1px solid rgba(255,255,255,0.3);" onclick="enableEditMode()">✏️ 수정</button>
+                        
+                        <div id="edit-actions" style="display:none; gap:5px;">
+                            <button class="btn-edit-action btn-save" onclick="saveShelterInfo()">저장</button>
+                            <button class="btn-edit-action btn-cancel" onclick="cancelEditMode()">취소</button>
+                        </div>
+                        
+                        <div id="admin-switch-area"></div> 
+                        <button class="btn-close-detail" onclick="closeDetailPanel()">×</button>
+                    </div>
+                </div>
+
+                <div class="detail-content" id="shelter-detail-content">
+                    
+                    <div class="detail-section">
+                        <h4>ℹ️ 기본 정보</h4>
+                        <table class="info-table">
+                            <tr>
+                                <th>이름</th>
+                                <td>
+                                    <span class="view-mode" id="v-name"></span>
+                                    <input type="text" class="edit-mode info-input" id="e-name">
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>주소</th>
+                                <td>
+                                    <span class="view-mode" id="v-addr"></span>
+                                    <input type="text" class="edit-mode info-input" id="e-addr">
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>수용인원</th>
+                                <td>
+                                    <span class="view-mode"><span id="v-cap"></span>명</span>
+                                    <input type="number" class="edit-mode info-input" id="e-cap">
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>위치</th>
+                                <td>
+                                    <div class="view-mode" style="font-size:11px; color:#718096;">
+                                        위도: <span id="v-lat"></span>, 경도: <span id="v-lng"></span>
+                                    </div>
+                                    <div class="edit-mode" style="display:none; gap:5px;">
+                                        <input type="text" class="info-input" id="e-lat" placeholder="위도" style="width:48%;">
+                                        <input type="text" class="info-input" id="e-lng" placeholder="경도" style="width:48%;">
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <div class="detail-section">
+                        <h4>👥 이재민 명단 <span id="dt-res-count" class="badge-count">0</span></h4>
+                        <ul id="dt-res-list" class="detail-list"></ul>
+                    </div>
+
+                    <div class="detail-section">
+                        <h4>📦 물품 현황</h4>
+                        <ul id="dt-inv-list" class="detail-list"></ul>
+                    </div>
+
+                    <div class="detail-section">
+                        <h4>👷 근무자 현황</h4>
+                        <ul id="dt-staff-list" class="detail-list"></ul>
+                    </div>
+
+                </div>
+            </div>
+			
+			<div id="supply-panel">
+                <div class="detail-header" style="background:#2980b9;"> <h3>📦 구호물품 관리</h3>
+                    <button class="btn-close-detail" onclick="closeSupplyPanel()">×</button>
+                </div>
+                
+                <div class="detail-content" style="padding:0;">
+                    
+                    <div class="add-supply-form">
+                        <div style="font-size:13px; font-weight:bold; color:#2c5282; margin-bottom:8px;">➕ 본청 물품 입고 (신규/추가)</div>
+                        <div class="form-row">
+                            <input type="text" id="new-item-name" placeholder="품목명 (예: 생수, 라면)">
+                            <input type="number" id="new-item-qty" placeholder="수량">
+                        </div>
+                        <button class="btn-add-stock" onclick="addHqSupply()">입고 등록</button>
+                    </div>
+
+                    <div style="padding: 15px;">
+                        <div style="font-size:13px; font-weight:bold; color:#4a5568; margin-bottom:10px;">📋 본청 재고 현황 및 배분</div>
+                        <div id="hq-supply-list">
+                            </div>
+                    </div>
+                </div>
+            </div>
+            <div id="map"></div>
+			
+<div id="notification-panel" style="position: fixed; bottom:-140px; background: white; border-radius: 15px 15px 0 0; box-shadow: 0 -5px 25px rgba(0,0,0,0.15); z-index: 1501; height: 180px; display: flex; flex-direction: column; transition: height 0.3s ease;">
+    <div id="panel-resizer" onclick="togglePanel(event)" style="height: 45px; background: #2c3e50; color: white; border-radius: 15px 15px 0 0; display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 0 15px;">
+        <div style="width: 40px; height: 4px; background: rgba(255,255,255,0.3); border-radius: 2px; position: absolute; top: 8px; left: 50%; transform: translateX(-50%);"></div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <span id="toggle-icon">▲</span>
+            <span style="font-weight: bold; font-size: 0.9rem;">📢 실시간 상황 알림</span>
+        </div>
+        <button onclick="clearNotifications(event)" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 3px 8px; border-radius: 5px; font-size: 0.7rem; cursor: pointer;">비우기</button>
+    </div>
+    <div id="notification-list" style="flex: 1; overflow-y: auto; padding: 15px; background: #f8fafc;">
+        <div class="empty-msg" style="text-align:center; color:#94a3b8; margin-top:30px;">수신된 알림이 없습니다.</div>
+    </div>
+</div>
+            <div class="route-legend-container">
+                <div class="legend-title">🚌 주민소개 경로</div>
+                <div id="legend-list"></div>
+            </div>
+            <div id="connect-guide">
+                🔗 연결할 '구호소(파란색)'를 클릭하세요! <button onclick="cancelConnect()" style="margin-left:10px; padding:2px 8px; border-radius:10px; border:none; background:#e74c3c; color:white; cursor:pointer;">취소</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="contextMenu">
+        <div class="context-item" onclick="addNode('shelter')">🏥 구호소 추가</div>
+        <div class="context-item" onclick="addNode('assembly')">🚩 집결지 추가</div>
+    </div>
+
+    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey={{ kakao_js_key }}&libraries=services"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+
+    <script>
+        var userRole = {{ user_role|default(3) }}; 
+
+        var mapContainer = document.getElementById('map'), 
+            mapOption = { center: new kakao.maps.LatLng(36.391401, 127.365340), level: 7 };
+        var map = new kakao.maps.Map(mapContainer, mapOption); 
+        var zoomControl = new kakao.maps.ZoomControl();
+        map.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
+
+        var locations = {{ locations | tojson }};
+		
+		const socket = io(); 
+
+		// 2. 연결 확인 로그
+		socket.on('connect', () => {
+			console.log("✅ 서버와 연결되었습니다! (ID: " + socket.id + ")");
+		});
+
+		socket.on('disconnect', () => {
+			console.log("❌ 서버와 연결이 끊어졌습니다.");
+		});
+
+		socket.on('sys_notification', (data) => {
+			console.log("📢 소켓 알림:", data);
+			handleNotification(data);
+		});
+
+		socket.on('map_update', function(msg) {
+			console.log(msg);
+			updateDashboardData();
+			var panel = document.getElementById('supply-panel');
+            if (panel.classList.contains('open')) {
+                loadHqSupplies();
+            }
+		});
+        
+        // ============================================================
+        // [수정] 아이콘 이미지를 외부 링크 대신 SVG 코드로 직접 정의
+        // ============================================================
+        
+        // 1. 구호소 아이콘
+        const SVG_SHELTER = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="30" height="41" viewBox="0 0 38 52">
+            <path d="M19 2C9.6 2 2 9.6 2 19C2 31 19 50 19 50S36 31 36 19C36 9.6 28.4 2 19 2Z" fill="#3498db" stroke="#2980b9" stroke-width="2"/>
+            <circle cx="19" cy="19" r="9" fill="white"/>
+        </svg>`;
+
+        // 2. 집결지 아이콘
+        const SVG_ASSEMBLY = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="30" height="41" viewBox="0 0 38 52">
+            <path d="M19 2C9.6 2 2 9.6 2 19C2 31 19 50 19 50S36 31 36 19C36 9.6 28.4 2 19 2Z" fill="#e74c3c" stroke="#c0392b" stroke-width="2"/>
+            <circle cx="19" cy="19" r="7" fill="white"/>
+        </svg>`;
+
+        // SVG 문자열을 데이터 URI 포맷으로 변환
+        const IMG_SHELTER = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(SVG_SHELTER);
+        const IMG_ASSEMBLY = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(SVG_ASSEMBLY);
+
+        var pendingSourceNode = null; 
+        var clickedLat = 0, clickedLng = 0;
+        var routeManager = {};
+        var markerManager = {}; // { 'type_id': {overlay: obj, data: loc, div: element} }
+        var routeCount = 0;
+        var colorIndex = 0;
+        const ROUTE_COLORS = ['#E74C3C', '#8E44AD', '#3498DB', '#16A085', '#F39C12', '#2C3E50'];
+        var currentInfowindow = null;
+
+        // 사이드바 토글
+        function toggleSidebar() {
+            var sidebar = document.getElementById('sidebar');
+            var btn = document.querySelector('.toggle-btn');
+            sidebar.classList.toggle('collapsed');
+            btn.innerHTML = sidebar.classList.contains('collapsed') ? '▶' : '◀';
+            setTimeout(function() { map.relayout(); }, 300);
+        }
+
+        // 초기화
+        var bounds = new kakao.maps.LatLngBounds();
+        locations.forEach(function(loc) {
+            if (loc.lat && loc.lng) {
+                var coords = new kakao.maps.LatLng(loc.lat, loc.lng);
+                createCustomMarker(coords, loc); // [수정] CustomOverlay 생성 함수 호출
+                
+                if (loc.type === 'assembly' && loc.route_infos) {
+                    loc.route_infos.forEach(function(route) {
+                        if (route.path_data && route.path_data.length > 0) {
+                            var linePath = route.path_data.map(p => new kakao.maps.LatLng(p.lat, p.lng));
+                            drawPathAndAddToLegend(linePath, loc.name, route.shelter_name);
+                            linePath.forEach(p => bounds.extend(p));
+                        }
+                    });
+                }
+            }
+        });
+
+        // ==============================
+        // [핵심] CustomOverlay 마커 생성 (그레이스케일 적용을 위해)
+        // ==============================
+        function createCustomMarker(coords, loc) {
+            var markerKey = loc.type + '_' + loc.id;
+            
+            // 1. 마커 이미지 요소 생성
+            var contentDiv = document.createElement('div');
+            contentDiv.className = 'marker-content';
+            if (!loc.is_active) contentDiv.classList.add('grayscale'); // 비활성 시 흑백 처리
+
+            var img = document.createElement('img');
+            img.src = (loc.type === 'shelter') ? IMG_SHELTER : IMG_ASSEMBLY;
+            contentDiv.appendChild(img);
+
+            // 2. CustomOverlay 생성
+            var customOverlay = new kakao.maps.CustomOverlay({
+                position: coords,
+                content: contentDiv,
+                xAnchor: 0.5, // [New] 가로 중앙을 좌표에 맞춤
+                yAnchor: 1,   // [New] 세로 바닥을 좌표에 맞춤 (꼬리 부분)
+                zIndex: 3
+            });
+            customOverlay.setMap(map);
+
+            // 3. 관리 객체에 등록
+            markerManager[markerKey] = {
+                overlay: customOverlay,
+                div: contentDiv,
+                data: loc,
+                visible: true
+            };
+            
+            // 4. 패널에 등록
+            addMarkerToPanel(loc, markerKey);
+
+            // 5. 클릭 이벤트 (Overlay는 map event를 막지 않으므로 div에 직접 이벤트)
+            contentDiv.onclick = function(e) {
+                e.stopPropagation(); // 지도 클릭 전파 방지
+                
+                // 1. 연결 모드 중이면 연결 로직 수행
+                if (pendingSourceNode) {
+                    if (loc.type === 'shelter') completeConnection(loc); 
+                    else alert("⚠️ 구호소(파란색)를 선택해야 연결됩니다.");
+                    return; 
+                }
+
+                // 2. [New] 구호소인 경우 상세 패널 열기
+                if (loc.type === 'shelter') {
+                    openDetailPanel(loc.id);
+                } 
+                // 3. 집결지인 경우 기존 말풍선(InfoWindow) 열기
+                else {
+                    openInfoWindow(loc, coords);
+                }
+            };
+        }
+
+        // ============================================================
+        // [New] 상세 패널 제어 함수
+        // ============================================================
+		var currentEditingShelterId = null;
+        function openDetailPanel(shelterId) {
+            closeSupplyPanel(); // 물품 패널 닫기
+            currentEditingShelterId = shelterId;
+            
+            var panel = document.getElementById('detail-panel');
+            var contentDiv = document.getElementById('shelter-detail-content');
+            
+            // 1. UI 초기화 (보기 모드로 리셋)
+            contentDiv.classList.remove('editing'); 
+            document.getElementById('btn-edit-mode').style.display = (userRole <= 2) ? 'inline-block' : 'none';
+            document.getElementById('edit-actions').style.display = 'none';
+            document.getElementById('panel-header-title').innerText = "불러오는 중...";
+
+            // 2. 패널 열기
+            panel.classList.add('open');
+
+            // 3. API 데이터 요청
+            fetch(`/api/shelter/${shelterId}/details`)
+                .then(r => r.json())
+                .then(data => {
+                    if(data.result === 'ok') {
+                        // 헤더 제목
+                        document.getElementById('panel-header-title').innerText = data.name;
+                        
+                        // [기본 정보 바인딩]
+                        // 보기 모드 값 넣기
+                        document.getElementById('v-name').innerText = data.name;
+                        document.getElementById('v-addr').innerText = data.address || "-";
+                        document.getElementById('v-cap').innerText = data.capacity || "0";
+                        document.getElementById('v-lat').innerText = data.lat;
+                        document.getElementById('v-lng').innerText = data.lng;
+
+                        // 수정 모드 값 넣기 (미리 채워둠)
+                        document.getElementById('e-name').value = data.name;
+                        document.getElementById('e-addr').value = data.address || "";
+                        document.getElementById('e-cap').value = data.capacity || 0;
+                        document.getElementById('e-lat').value = data.lat;
+                        document.getElementById('e-lng').value = data.lng;
+
+                        // 관리자 스위치 UI (기존 로직 유지)
+                        var switchArea = document.getElementById('admin-switch-area');
+                        switchArea.innerHTML = "";
+                        if (userRole <= 2) {
+                            var currentLoc = locations.find(l => l.id == shelterId && l.type == 'shelter');
+                            var isChecked = currentLoc ? currentLoc.is_active : false;
+                            var labelText = isChecked ? "운영중" : "중지됨";
+                            
+                            switchArea.innerHTML = `
+                                <span class="toggle-label">${labelText}</span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleStatus('shelter', ${shelterId}, '${data.name}')">
+                                    <span class="slider"></span>
+                                </label>`;
+                        }
+
+                        // 리스트 렌더링 (기존 로직)
+                        renderList('dt-res-list', data.residents, (item) => `<span>${item.name} (${item.gender})</span> <small>${item.time} 입소</small>`);
+                        document.getElementById('dt-res-count').innerText = data.residents.length;
+                        renderList('dt-inv-list', data.inventory, (item) => `<span>${item.name}</span> <b>${item.qty}개</b>`, "재고 없음");
+                        renderList('dt-staff-list', data.staff, (item) => `<span>${item.name}</span> <span style="color:#27ae60">근무중</span>`, "근무자 없음");
+
+                    } else {
+                        alert("정보 로딩 실패: " + data.msg);
+                        closeDetailPanel();
+                    }
+                });
+        }
+
+        function closeDetailPanel() {
+            document.getElementById('detail-panel').classList.remove('open');
+        }
+		
+		// 수정 모드 진입
+        function enableEditMode() {
+            // CSS 클래스 하나로 모든 텍스트 -> 인풋 전환
+            document.getElementById('shelter-detail-content').classList.add('editing');
+            
+            // 버튼 전환
+            document.getElementById('btn-edit-mode').style.display = 'none';
+            document.getElementById('edit-actions').style.display = 'flex';
+        }
+
+        // 수정 취소
+        function cancelEditMode() {
+            document.getElementById('shelter-detail-content').classList.remove('editing');
+            
+            document.getElementById('btn-edit-mode').style.display = 'inline-block';
+            document.getElementById('edit-actions').style.display = 'none';
+            
+            // (선택) 원래 값으로 인풋 리셋하고 싶으면 여기서 다시 API 값 할당 가능
+        }
+
+        // 수정 사항 저장
+        function saveShelterInfo() {
+            var id = currentEditingShelterId;
+            var payload = {
+                name: document.getElementById('e-name').value,
+                address: document.getElementById('e-addr').value,
+                capacity: document.getElementById('e-cap').value,
+                lat: document.getElementById('e-lat').value,
+                lng: document.getElementById('e-lng').value
+            };
+
+            if(!payload.name) return alert("이름은 필수입니다.");
+
+            fetch(`/api/shelter/${id}/update`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            })
+            .then(r => r.json())
+            .then(data => {
+                if(data.result === 'ok') {
+                    //alert("수정되었습니다.");
+                    
+                    // UI 갱신을 위해 상세정보 다시 불러오기
+                    openDetailPanel(id);
+                    
+                    // 지도 마커 위치 등이 바뀌었을 수 있으므로 전체 새로고침 신호
+                    // (소켓이 있다면 소켓이 해주겠지만, 내 화면은 즉시 반영)
+                    updateDashboardData(); 
+                } else {
+                    alert("오류: " + data.msg);
+                }
+            });
+        }
+
+        // 리스트 렌더링 헬퍼 함수
+        function renderList(elementId, dataArray, templateFunc, emptyText="데이터 없음") {
+            var el = document.getElementById(elementId);
+            if (!dataArray || dataArray.length === 0) {
+                el.innerHTML = `<li class="empty-msg">${emptyText}</li>`;
+                return;
+            }
+            var html = "";
+            dataArray.forEach(item => {
+                html += `<li>${templateFunc(item)}</li>`;
+            });
+            el.innerHTML = html;
+        }
+
+        // [추가] 지도 빈 곳 클릭 시 패널 닫기
+        kakao.maps.event.addListener(map, 'click', function() { 
+            contextMenu.style.display = 'none'; 
+            if(currentInfowindow) currentInfowindow.close(); 
+            closeDetailPanel(); // 상세 패널도 닫기
+        });
+
+        // [New] 상태 토글 요청
+        window.toggleStatus = function(type, id, name) {
+            if(!confirm(`'${name}'의 운영 상태를 변경하시겠습니까?`)) return;
+
+            fetch('/api/map/toggle_status', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ type: type, id: id })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if(data.result === 'ok') {
+                    //alert(data.msg);
+                    
+                    // UI 업데이트 (새로고침 없이)
+                    var key = type + '_' + id;
+                    var item = markerManager[key];
+                    if(item) {
+                        item.data.is_active = data.new_status; // 데이터 갱신
+                        
+                        // 마커 스타일 갱신
+                        if(data.new_status) item.div.classList.remove('grayscale');
+                        else item.div.classList.add('grayscale');
+                        
+                        // 패널 아이템 스타일 갱신
+                        updatePanelItem(key, data.new_status);
+                        
+                        // 인포윈도우 닫기 (내용 갱신 필요하므로)
+                        if(currentInfowindow) currentInfowindow.close();
+                    }
+                } else {
+                    alert("실패: " + data.msg);
+                }
+            });
+        };
+
+        // [수정] 좌측 패널 등록 함수 (이벤트 연결 추가)
+        function addMarkerToPanel(loc, key) {
+            var containerId = loc.type === 'shelter' ? 'shelter-list' : 'assembly-list';
+            var container = document.getElementById(containerId);
+            
+            // 1. 카드 컨테이너 생성
+            var div = document.createElement('div');
+            div.className = 'marker-item';
+            div.id = 'panel-' + key;
+            if(!loc.is_active) div.classList.add('inactive'); 
+            
+            // 2. 이벤트 1: 카드 전체 클릭 -> 상세정보(구호소) 또는 지도이동(집결지)
+            div.onclick = function() {
+                if (loc.type === 'shelter') {
+                    // 구호소는 상세 패널 열기
+                    openDetailPanel(loc.id);
+                } else {
+                    // 집결지는 해당 위치로 지도 이동 및 말풍선 열기
+                    var moveLatLon = new kakao.maps.LatLng(loc.lat, loc.lng);
+                    map.panTo(moveLatLon);
+                    openInfoWindow(loc, moveLatLon);
+                }
+            };
+
+            // 마우스 오버 효과 (기존 유지)
+            div.onmouseenter = function() { highlightMarker(key); };
+            div.onmouseleave = function() { unhighlightMarker(key); };
+
+            // 3. 아이콘 이미지 생성 (버튼 역할)
+            var iconImg = document.createElement('img');
+            iconImg.src = (loc.type === 'shelter') ? IMG_SHELTER : IMG_ASSEMBLY;
+            iconImg.className = 'marker-icon';
+            iconImg.title = "클릭하여 지도에서 숨기기/보이기"; // 툴팁 추가
+            
+            // [핵심] 이벤트 2: 아이콘 클릭 -> 지도 마커 토글 (상위 클릭 이벤트 전파 중단)
+            iconImg.onclick = function(e) {
+                e.stopPropagation(); // 카드 클릭(상세보기)이 발생하지 않도록 막음
+                toggleMapVisibility(key);
+            };
+
+            // 4. 정보 텍스트 영역 생성
+            var infoBox = document.createElement('div');
+            infoBox.className = 'marker-info-box';
+            
+            var html = `<div class="marker-name">${loc.name}</div>`;
+            if (loc.type === 'shelter' && (loc.stat_resident || loc.stat_staff)) {
+                html += `<div class="marker-stats">`;
+                html += `<span class="stat-badge">👥${loc.stat_resident || 0}</span>`;
+                html += `<span class="staff-badge">👮${loc.stat_staff || 0}</span>`;
+                html += `</div>`;
+            }
+            infoBox.innerHTML = html;
+
+            // 5. 조립
+            div.appendChild(iconImg);
+            div.appendChild(infoBox);
+            container.appendChild(div);
+        }
+
+        // [New] 마커 하이라이트 제어 함수
+        function highlightMarker(key) {
+            var item = markerManager[key];
+            if (item && item.div) {
+                item.div.classList.add('highlight'); // CSS 클래스 추가
+            }
+        }
+
+        function unhighlightMarker(key) {
+            var item = markerManager[key];
+            if (item && item.div) {
+                item.div.classList.remove('highlight'); // CSS 클래스 제거
+            }
+        }
+
+        function updatePanelItem(key, isActive) {
+            var div = document.getElementById('panel-' + key);
+            if(isActive) div.classList.remove('inactive');
+            else div.classList.add('inactive');
+        }
+
+        // 지도 표시 토글 (눈 끄기/켜기)
+        function toggleMapVisibility(key) {
+            var item = markerManager[key];
+            if (!item) return;
+            var isVisible = !item.visible;
+            item.visible = isVisible;
+            item.overlay.setMap(isVisible ? map : null);
+            
+            var uiItem = document.getElementById('panel-' + key);
+            if (!isVisible) uiItem.classList.add('hidden-map');
+            else uiItem.classList.remove('hidden-map');
+        }
+
+        // ==============================
+        // 연결 로직 (Helper wrappers)
+        // ==============================
+        window.startConnectModeId = function(id) {
+            // ID로 loc 객체 찾기
+            var key = 'assembly_' + id;
+            var item = markerManager[key];
+            if(item) startConnectMode(item.data);
+        }
+
+        function startConnectMode(loc) {
+            if (currentInfowindow) currentInfowindow.close(); 
+            pendingSourceNode = loc; 
+            document.getElementById('connect-guide').style.display = 'block';
+        }
+        window.cancelConnect = function() {
+            pendingSourceNode = null;
+            document.getElementById('connect-guide').style.display = 'none';
+        }
+        function completeConnection(targetLoc) {
+            var sourceNode = pendingSourceNode; 
+            if (confirm(`[${sourceNode.name}] ➡️ [${targetLoc.name}]\n연결하시겠습니까?`)) {
+                fetch('/api/map/connect', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ assembly_id: sourceNode.id, shelter_id: targetLoc.id })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if(data.result === 'ok') {
+                        var startStr = sourceNode.lng + "," + sourceNode.lat;
+                        var endStr = targetLoc.lng + "," + targetLoc.lat;
+                        var wayString = encodeURIComponent(data.waypoints || ""); 
+                        var url = `/get_kakao_route?start=${startStr}&end=${endStr}&way=${wayString}`;
+                        fetch(url).then(res => res.json()).then(json => {
+                            if (json.result === 'ok') {
+                                var linePath = json.path.map(p => new kakao.maps.LatLng(p.lat, p.lng));
+                                drawPathAndAddToLegend(linePath, sourceNode.name, targetLoc.name);
+                            }
+                        });
+                    } else { alert("오류: " + data.msg); }
+                });
+            }
+            cancelConnect();
+        }
+
+        // 1. 경로 그리기 및 범례 추가
+        function drawPathAndAddToLegend(linePath, startName, endName) {
+            var routeColor = ROUTE_COLORS[colorIndex++ % ROUTE_COLORS.length];
+            
+            // 선 그리기
+            var polyline = new kakao.maps.Polyline({
+                path: linePath,
+                strokeWeight: 5,
+                strokeColor: routeColor,
+                strokeOpacity: 0.8,
+                strokeStyle: 'solid'
+            });
+            polyline.setMap(map);
+            
+            // 화살표 그리기
+            var arrows = createArrowsOnPath(linePath, routeColor);
+            
+            // 관리 객체 등록
+            var routeId = `route_${routeCount++}`;
+            routeManager[routeId] = { polyline: polyline, arrows: arrows, visible: true };
+            
+            // 범례에 추가
+            var div = document.createElement('div');
+            div.className = 'route-item';
+            div.id = 'legend-' + routeId;
+            div.onclick = function() { toggleRoute(routeId); }; 
+            div.innerHTML = `<div class="color-box" style="background:${routeColor};"></div><div style="overflow:hidden; text-overflow:ellipsis;"><b>${startName}</b> → ${endName}</div>`;
+            document.getElementById('legend-list').appendChild(div);
+        }
+
+        // 2. 경로 토글 함수
+        window.toggleRoute = function(routeId) {
+            var routeData = routeManager[routeId];
+            if (!routeData) return;
+            var isVisible = !routeData.visible;
+            routeData.visible = isVisible;
+            if (isVisible) {
+                routeData.polyline.setMap(map);
+                routeData.arrows.forEach(a => a.setMap(map));
+                document.getElementById('legend-' + routeId).classList.remove('hidden');
+            } else {
+                routeData.polyline.setMap(null);
+                routeData.arrows.forEach(a => a.setMap(null));
+                document.getElementById('legend-' + routeId).classList.add('hidden');
+            }
+        };
+
+        // ==============================
+        // 우클릭 메뉴 (권한 제어)
+        // ==============================
+        var contextMenu = document.getElementById('contextMenu');
+        if (userRole <= 2) {
+            kakao.maps.event.addListener(map, 'rightclick', function(mouseEvent) {
+                var latlng = mouseEvent.latLng;
+                clickedLat = latlng.getLat(); clickedLng = latlng.getLng();
+                contextMenu.style.display = 'block';
+                var evt = window.event; 
+                contextMenu.style.left = evt.clientX + 'px'; contextMenu.style.top = evt.clientY + 'px';
+            });
+        }
+        kakao.maps.event.addListener(map, 'click', function() { 
+            contextMenu.style.display = 'none'; 
+            if(currentInfowindow) currentInfowindow.close(); 
+        });
+
+        window.addNode = function(type) {
+            contextMenu.style.display = 'none';
+            var typeName = type === 'shelter' ? '🏥구호소' : '🚩집결지';
+            var name = prompt(`${typeName}명을 입력해주세요 :`);
+            if (name) {
+                fetch('/api/map/add_node', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ type: type, name: name, lat: clickedLat, lng: clickedLng })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if(data.result === 'ok') {
+                        //alert(data.msg);
+                        // 새로 추가된 노드는 기본적으로 활성 상태
+                        var newLoc = { id: data.id, name: name, lat: clickedLat, lng: clickedLng, type: type, route_infos: [], is_active:true, stat_resident:0, stat_staff:0 };
+                        locations.push(newLoc);
+                        createCustomMarker(new kakao.maps.LatLng(clickedLat, clickedLng), newLoc); 
+                    } else { alert("오류: " + data.msg); }
+                });
+            }
+        };
+
+        // --- 헬퍼 함수 ---
+        function calculateAngle(startLat, startLng, endLat, endLng) {
+            var dy = endLat - startLat; var dx = endLng - startLng;
+            var theta = Math.atan2(dy, dx); theta *= 180 / Math.PI; return theta; 
+        }
+        function createArrowsOnPath(path, color) {
+            var arrows = []; var step = 10; 
+            for (var i = 0; i < path.length - step; i += step) {
+                var p1 = path[i]; var p2 = path[i + 5]; if (!p2) continue;
+                var angle = calculateAngle(p1.getLat(), p1.getLng(), p2.getLat(), p2.getLng());
+                var content = `<div class="arrow-overlay" style="color:${color}; transform: rotate(${-angle}deg);">➤</div>`;
+                var overlay = new kakao.maps.CustomOverlay({ map: map, position: p1, content: content, yAnchor: 0.5, xAnchor: 0.5 });
+                arrows.push(overlay);
+            }
+            return arrows;
+        }
+		
+		function openInfoWindow(loc, coords) {
+            if (currentInfowindow) currentInfowindow.close();
+
+            var content = document.createElement('div');
+            
+            // 제목 설정
+            var titleColor = loc.is_active ? '#e74c3c' : '#777'; // 집결지는 빨강/회색
+            var statusText = loc.is_active ? '' : '(운영중지)';
+            
+            var html = `<div class="iw-container">`;
+            html += `<span class="iw-title" style="color:${titleColor}">${loc.name} </span>`;//<small>${statusText}</small>
+            
+            // [New] 관리자 전용 컨트롤 버튼
+            if (userRole <= 2) {
+                html += `<div class="iw-controls">`;
+                
+                // 1. 연결 버튼 (활성 상태일 때만)
+                if (loc.is_active) {
+                    html += `<button class="iw-btn-action btn-connect" onclick="startConnectModeId(${loc.id})">🔗 구호소 연결</button>`;
+                }
+                
+                // 2. 운영 토글 버튼
+                if (loc.is_active) {
+                    html += `<button class="iw-btn-action btn-stop" onclick="toggleStatus('${loc.type}', ${loc.id}, '${loc.name}')">⛔ 운영 중지</button>`;
+                } else {
+                    html += `<button class="iw-btn-action btn-start" onclick="toggleStatus('${loc.type}', ${loc.id}, '${loc.name}')">✅ 운영 재개</button>`;
+                }
+                
+                html += `</div>`;
+            }
+            html += `</div>`;
+
+            content.innerHTML = html;
+
+            var infowindow = new kakao.maps.InfoWindow({
+                content: content,
+                position: coords,
+                removable: true,
+                zIndex: 10
+            });
+            infowindow.open(map); 
+            currentInfowindow = infowindow;
+        }
+		
+		// ============================================================
+        // [핵심] 화면 갱신 함수 (새로고침 없이 데이터만 싹 바꿈)
+        // ============================================================
+        function updateDashboardData() {
+            fetch('/api/map/refresh_data')
+            .then(r => r.json())
+            .then(data => {
+                if(data.result !== 'ok') return;
+
+                // (A) 상단 통계 카드 숫자 갱신 (애니메이션 효과를 주고 싶다면 여기서 처리)
+                document.getElementById('val-residents').innerText = data.summary.residents;
+                document.getElementById('val-supplies').innerText = data.summary.supplies;
+                document.getElementById('val-shelters').innerText = data.summary.shelters;
+                document.getElementById('val-assemblies').innerText = data.summary.assemblies;
+
+                // (B) 각 시설별 상태(운영중/중지, 인원수) 갱신
+                data.locations.forEach(loc => {
+                    var key = loc.type + '_' + loc.id;
+                    var item = markerManager[key]; // 관리 객체에서 찾음
+                    
+                    if (item) {
+                        // 1. 데이터 업데이트
+                        item.data.is_active = loc.is_active;
+                        if(loc.type === 'shelter') {
+                            item.data.stat_resident = loc.stat_resident;
+                            item.data.stat_staff = loc.stat_staff;
+                        }
+
+                        // 2. 지도 마커 스타일 업데이트 (흑백처리)
+                        if (item.div) {
+                            if (loc.is_active) item.div.classList.remove('grayscale');
+                            else item.div.classList.add('grayscale');
+                        }
+
+                        // 3. 좌측 패널(목록) 업데이트
+                        var panelItem = document.getElementById('panel-' + key);
+                        if (panelItem) {
+                            // (3-1) 배경/아이콘 스타일
+                            if (loc.is_active) panelItem.classList.remove('inactive');
+                            else panelItem.classList.add('inactive');
+
+                            // (3-2) 뱃지 숫자 업데이트 (구호소인 경우)
+                            if (loc.type === 'shelter') {
+                                // querySelector로 내부 뱃지 찾아서 숫자 변경
+                                var badgeRes = panelItem.querySelector('.stat-badge');
+                                var badgeStaff = panelItem.querySelector('.staff-badge');
+                                if(badgeRes) badgeRes.innerText = `👥${loc.stat_resident}`;
+                                if(badgeStaff) badgeStaff.innerText = `👮${loc.stat_staff}`;
+                            }
+                        }
+                    }
+                });
+                
+                // 만약 현재 열려있는 상세 패널이 있다면 정보 갱신 (선택사항)
+                // 현재 보고 있는 구호소라면 refreshDetailPanel() 같은 걸 호출할 수도 있음
+            })
+            .catch(err => console.error("Data Refresh Error:", err));
+        }
+		
+		
+// ============================================================
+        // [New] 물품 관리 패널 (Slide-out) 기능
+        // ============================================================
+        
+        // 1. 패널 열기/닫기
+        function openSupplyPanel() {
+            if (userRole > 2) return alert("관리자 권한이 필요합니다.");
+            
+            // 구호소 상세패널이 열려있으면 닫기 (겹침 방지)
+            closeDetailPanel();
+            
+            var panel = document.getElementById('supply-panel');
+            panel.classList.add('open');
+            
+            loadHqSupplies(); // 데이터 불러오기
+        }
+
+        function closeSupplyPanel() {
+            document.getElementById('supply-panel').classList.remove('open');
+        }
+
+        // 2. 본청 물품 목록 불러오기
+        function loadHqSupplies() {
+            var listContainer = document.getElementById('hq-supply-list');
+            listContainer.innerHTML = "<div class='empty-msg'>데이터를 불러오고 있습니다...</div>";
+
+            fetch('/api/supplies/hq')
+            .then(r => r.json())
+            .then(data => {
+                if(data.result === 'ok') {
+                    renderSupplyCards(data.supplies, data.shelters);
+                } else {
+                    listContainer.innerHTML = "<div class='empty-msg'>오류 발생</div>";
+                }
+            });
+        }
+
+        // 3. 본청 물품 입고 (추가)
+        function addHqSupply() {
+            var nameInput = document.getElementById('new-item-name');
+            var qtyInput = document.getElementById('new-item-qty');
+            
+            var name = nameInput.value.trim();
+            var qty = qtyInput.value;
+
+            if(!name) return alert("품목명을 입력하세요.");
+            if(!qty || qty <= 0) return alert("수량을 정확히 입력하세요.");
+
+            fetch('/api/supplies/add_hq', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ item_name: name, quantity: qty })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if(data.result === 'ok') {
+                    alert(data.msg);
+                    nameInput.value = ''; // 입력창 초기화
+                    qtyInput.value = '';
+                    loadHqSupplies(); // 목록 갱신
+                } else {
+                    alert("실패: " + data.msg);
+                }
+            });
+        }
+
+        // 4. 리스트 렌더링 (카드 형태)
+        function renderSupplyCards(supplies, shelters) {
+            var container = document.getElementById('hq-supply-list');
+            
+            if(!supplies || supplies.length === 0) {
+                container.innerHTML = "<div class='empty-msg'>등록된 물품이 없습니다.<br>위에서 신규 입고를 진행해주세요.</div>";
+                return;
+            }
+            
+            // 배분 대상 구호소 옵션 미리 생성
+            var shelterOptions = shelters.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+            
+            container.innerHTML = supplies.map(item => `
+                <div class="supply-card-item">
+                    <div class="supply-card-header">
+                        <span class="supply-name">${item.name}</span>
+                        <span class="supply-total">${item.qty}개</span>
+                    </div>
+                    
+                    <div class="dist-control">
+                        <select id="sel-target-${item.id}" class="dist-select">
+                            <option value="">구호소 선택</option>
+                            ${shelterOptions}
+                        </select>
+                        <input type="number" id="inp-qty-${item.id}" class="dist-input" placeholder="0" min="-999" max="${item.qty}">
+                        <button class="btn-dist" onclick="distributeSupply('${item.name}', ${item.id})">배분</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 5. 물품 배분 (본청 -> 구호소)
+        function distributeSupply(itemName, itemId) {
+            var targetId = document.getElementById(`sel-target-${itemId}`).value;
+            var qty = document.getElementById(`inp-qty-${itemId}`).value;
+
+            if(!targetId) return alert("배분할 구호소를 선택해주세요.");
+            if(!qty) return alert("배분할 수량을 입력해주세요.");
+
+            if(!confirm(`[${itemName}] ${qty}개를 선택한 구호소로 보내시겠습니까?`)) return;
+
+            fetch('/api/supplies/distribute', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    item_name: itemName,
+                    quantity: qty,
+                    target_id: targetId
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if(data.result === 'ok') {
+                    alert(data.msg);
+                    // 소켓이 자동으로 갱신해주겠지만, 즉각 반응을 위해 호출
+                    loadHqSupplies(); 
+                } else {
+                    alert("실패: " + data.msg);
+                }
+            });
+        }
+		
+	
+		
+// 알림창 토글 로직
+let isCollapsed = true;
+
+function togglePanel(event) {
+    // 비우기 버튼 클릭 시에는 토글되지 않도록 방지
+    if (event.target.tagName === 'BUTTON') return;
+
+    const notificationpanel = document.getElementById('notification-panel');
+    const icon = document.getElementById('toggle-icon');
+    
+    if (!isCollapsed) {
+        notificationpanel.style.bottom = '-140px';
+        icon.innerText = '▲';
+        isCollapsed = true;
+    } else {
+        notificationpanel.style.bottom = '-1px';
+        icon.innerText = '▼';
+        isCollapsed = false;
+    }
+}		
+		
+// 4. 페이지 로드 시 기존 알림 렌더링
+document.addEventListener("DOMContentLoaded", () => {
+	// 1. 기존 알림 불러오기
+	const saved = JSON.parse(localStorage.getItem('shelter_notifications') || '[]');
+	renderNotifications(saved);
+
+	// 2. 서버에서 보낸 Flash 메시지가 있는지 확인 (Jinja2 문법)
+	{% with messages = get_flashed_messages(with_categories=true) %} 
+		{% if messages %}
+			{% for category, message in messages %}
+				// 카테고리에 따라 아이콘/색상 결정
+				let icon = '📢';
+				let color = '#3498db'; // 기본 파랑
+
+				if ("{{ category }}" === "error") {
+					icon = '❌';
+					color = '#e74c3c'; // 빨강
+				} else if ("{{ category }}" === "warning") {
+					icon = '⚠️';
+					color = '#f1c40f'; // 노랑
+				} else if ("{{ category }}" === "success") {
+					icon = '✅';
+					color = '#2ecc71'; // 초록
+				}
+
+				// 가짜 알림 객체 생성
+				const flashNoti = {
+					message: message,
+					time: new Date().toLocaleTimeString('ko-KR', {hour12: false}),
+					type: "{{ category }}", // 저장용 타입
+					color: color,           // UI용 색상
+					icon: icon              // UI용 아이콘
+				};
+				
+				// 알림 처리 함수 호출
+				handleNotification(flashNoti);
+			{% endfor %}
+		{% endif %}
+	{% endwith %}
+});
+
+// [UI 함수] 알림 목록 그리기
+function renderNotifications(dataArray) {
+	const notiList = document.getElementById('notification-list');
+	if (!notiList) return;
+
+	if (dataArray.length === 0) {
+		notiList.innerHTML = '<div class="empty-msg" style="text-align:center; color:#94a3b8; margin-top:30px;">수신된 알림이 없습니다.</div>';
+		return;
+	}
+	notiList.innerHTML = dataArray.map(data => {
+        // 데이터에 저장된 색상이 없으면 기본값 사용
+        const borderCol = data.color || '#3498db'; 
+        const icon = data.icon || '';
+        
+        return `
+            <div style="background:white; padding:12px; border-radius:10px; margin-bottom:10px; border-left:5px solid ${borderCol}; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                    <strong style="font-size:0.9rem;">${icon} ${data.message}</strong>
+                    <small style="color:#999;">${data.time}</small>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function handleNotification(data) {
+	// 1. 저장
+	let saved = JSON.parse(localStorage.getItem('shelter_notifications') || '[]');
+	saved.unshift(data);
+	if (saved.length > 50) saved.pop();
+	localStorage.setItem('shelter_notifications', JSON.stringify(saved));
+
+	// 2. 렌더링
+	renderNotifications(saved);
+	/*
+	// 3. 패널 열기
+	const panel = document.getElementById('notification-panel');
+	const icon = document.getElementById('toggle-icon');
+	if (panel) {
+		panel.style.bottom = '-1px';
+		if(icon) icon.innerText = '▼';
+	}
+	*/
+}
+
+
+// 4. 알림 비우기
+function clearNotifications() {
+    if (confirm('모든 알림 기록을 삭제하시겠습니까?')) {
+        localStorage.removeItem('shelter_notifications');
+        renderNotifications([]);
+    }
+}
+    </script>
+</body>
+</html>

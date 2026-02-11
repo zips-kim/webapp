@@ -1,0 +1,84 @@
+{% extends "layout.html" %}
+
+{% block title %}🏠 유성쉘터 (Shelter-On){% endblock %}
+
+{% block content %}
+
+    <div style="padding:20px; max-width: 500px; margin: 0 auto;">
+		<div class="card backup-card p-25 mb-20">
+			<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+				<h3 class="mt-0" style="color: #0050b3;">📦 프로젝트 백업</h3>
+				<a href="/download_project" class="btn-base btn-download">현재 소스 압축 (.zip)</a>
+			</div>
+			<p style="font-size: 12px; color: #666; margin: 0;">
+				※ 현재 서버에서 구동 중인 소스 코드, 템플릿, 데이터베이스 등 최상위 폴더의 모든 파일을 ZIP으로 압축하여 내려받습니다.
+			</p>
+		</div>
+
+        <div class="card upload-dropzone p-25 mb-20">
+			<h3 class="mt-0" style="color: #2c3e50;">🛠️ 개발 환경 파일 전송</h3>
+			
+			<form action="/upload_files" method="post" enctype="multipart/form-data">
+				<div class="mb-15">
+					<select name="upload_folder_select" class="form-input form-input-light">
+						{% for folder in folders %}
+						<option value="{{ folder.value }}">{{ folder.display }}</option>
+						{% endfor %}
+					</select>
+				</div>
+
+				<div class="mb-15">
+					<label class="text-bold mb-5" style="display:block; font-size:14px;">직접 입력 (신규 폴더 생성 시)</label>
+					<input type="text" name="upload_folder_direct" placeholder="선택 목록에 없는 경로 입력 시 작성" class="form-input">
+				</div>
+				
+				<div class="mb-20">
+					<label class="text-bold mb-5" style="display:block; font-size:14px;">파일 선택</label>
+					<input type="file" name="files" multiple class="form-input">
+				</div>
+				
+				<button type="submit" class="btn-base btn-primary w-100" style="font-size: 16px;">🚀 파일 서버로 전송</button>
+			</form>
+		</div>
+		
+		{% with messages = get_flashed_messages() %}
+          {% if messages %}
+            {% for message in messages %}
+              <div id="flash-msg" class="flash-msg-box">{{ message }}</div>
+            {% endfor %}
+            <script>
+                setTimeout(function() {
+                    var msg = document.getElementById('flash-msg');
+                    if(msg) msg.style.display = 'none';
+                }, 2000);
+            </script>
+          {% endif %}
+        {% endwith %}
+		
+		<div class="card p-25">
+			<h3 class="mt-0">📂 서버 파일 관리</h3>
+			<div class="mb-15">
+				<select onchange="location.href='/upload?folder=' + this.value" class="form-input" style="background: #fffbe6; border-color: #ffe58f;">
+					{% for folder in folders %}
+					<option value="{{ folder.value }}" {% if folder.value == current_folder %}selected{% endif %}>{{ folder.display }}</option>
+					{% endfor %}
+				</select>
+			</div>
+
+			{% if files %}
+			<ul class="file-list">
+				{% for file in files %}
+				<li class="file-item">
+					<span style="font-size: 14px; color: #333;">📄 {{ file }}</span>
+					<div style="display: flex; gap: 5px;">
+						<a href="{{ url_for('download_file', folder_path=current_folder if current_folder else 'root', filename=file) }}" class="btn-base btn-success btn-sm">다운로드</a>
+						<a href="{{ url_for('delete_file', folder_path=current_folder if current_folder else 'root', filename=file) }}" 
+						   onclick="return confirm('정말 이 파일을 삭제하시겠습니까?');" class="btn-base btn-danger btn-sm">삭제</a>
+					</div>
+				</li>
+				{% endfor %}
+			</ul>
+			{% endif %}
+		</div>
+    </div>
+{% endblock %}

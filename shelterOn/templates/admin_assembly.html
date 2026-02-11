@@ -1,0 +1,101 @@
+{% extends "layout.html" %}
+
+{% block title %}🏠 유성쉘터 (Shelter-On){% endblock %}
+
+{% block content %}
+
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2 style="margin: 0;">📍 집결지 관리</h2>
+        <button onclick="openModal('assemblyModal')" style="background:#e67e22; width:auto; padding: 10px 20px; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">➕ 집결지 등록</button>
+    </div>
+
+    <div class="mobile-card-container">
+        {% for item in assemblies %}
+        <div class="data-card">
+            {% if item.info.stop_no %}
+            <div class="card-badge" style="background: #edf2f7; color: #4a5568; border: 1px solid #cbd5e0;">
+                버스정류장 번호. {{ item.info.stop_no }}
+            </div>
+            {% endif %}
+
+            <div class="card-title">🚩 {{ item.info.name }}</div>
+            <div class="card-info">📍 {{ item.info.address }}</div>
+            
+            <div style="padding: 0px 0px 10px 0px; background: #f8fafc; border-radius: 8px;">
+                <div style="margin: 10px; display: flex; flex-wrap: wrap; gap: 5px;">
+                        {% for dest in item.destinations %}
+                        <span style="background: #ebf5fb; color: #2980b9; padding: 2px 8px; border-radius: 12px; font-size: 12px; border: 1px solid #3498db;">
+                            {{ dest.name }}
+                            <a href="/delete_destination/{{ item.info.id }}/{{ dest.id }}" style="color: #e74c3c; text-decoration: none; margin-left: 5px; font-weight: bold;">×</a>
+                        </span>
+                        {% endfor %}
+                </div>
+                
+                <form action="/add_destination" method="post" style="display: flex; gap: 5px;">
+                    <input type="hidden" name="assembly_id" value="{{ item.info.id }}">
+                    <select name="shelter_id" required style="flex:1; font-size:12px; height:32px;min-width:50%;">
+                        <option value="">+ 구호소 연결</option>
+                        {% for s in all_shelters %}
+                        <option value="{{ s.id }}">{{ s.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" style="width:50px; padding: 4px 8px; background: #3498db; font-size: 12px;">연결</button>
+                </form>
+            </div>
+
+            <div class="card-actions">
+                <button onclick="showQR('{{ item.info.id }}', '{{ item.info.name }}')" 
+                        style="flex: 1; background: #2c3e50; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold;">
+                    도착 QR 코드
+                </button>
+                <a href="/delete_assembly/{{ item.info.id }}" 
+                   onclick="return confirm('이 집결지를 삭제(비활성화) 하시겠습니까?')"
+                   style="flex: 1; text-align: center; background: #fff; color: #e53e3e; border: 1px solid #e53e3e; padding: 10px; border-radius: 8px; text-decoration: none; font-weight: bold;">
+                    삭제
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+
+<div id="assemblyModal" class="modal">
+	<div class="modal-content">
+		<span class="close" onclick="closeModal('assemblyModal')">&times;</span>
+		<h3>🚩 신규 집결지 등록</h3>
+		<hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
+		<form action="/add_assembly" method="post">
+			<input type="text" name="name" placeholder="집결지 명칭 (예: OO초등학교 운동장)" required class="search-input" style="width:100%; box-sizing: border-box; margin-bottom:10px;">
+			<input type="text" name="stop_no" placeholder="정류장번호" class="search-input" style="width:100%; box-sizing: border-box; margin-bottom:20px;">
+			<input type="text" name="address" placeholder="상세 위치" required class="search-input" style="width:100%; box-sizing: border-box; margin-bottom:20px;">
+			<button type="submit" style="width:100%; background:#e67e22; color:white; border:none; padding:12px; border-radius:8px; font-weight:bold;">등록하기</button>
+		</form>
+	</div>
+</div>
+
+<div id="qrModal" class="modal">
+	<div class="modal-content" style="text-align: center;">
+		<span class="close" onclick="closeModal('qrModal')">&times;</span>
+		<h3 id="qrTitle" style="margin-top: 0;">집결지 도착 QR</h3>
+		<div id="qrcode" style="display: flex; justify-content: center; margin: 20px 0;"></div>
+		<p style="font-size: 14px; color: #666;">주민들이 집결지 도착 시 스캔하는 코드입니다.</p>
+		<button onclick="closeModal('qrModal')" style="background: #95a5a6; width: 100%; padding: 12px; color: white; border: none; border-radius: 8px; cursor: pointer;">닫기</button>
+	</div>
+</div>
+
+<script>
+	function showQR(assemblyId, assemblyName) {
+		const baseUrl = window.location.origin;
+		// 추후 만들 집결지 등록 페이지 주소 (미리 설정)
+		const registerUrl = baseUrl + '/register_assembly/' + assemblyId;
+		document.getElementById('qrTitle').innerText = assemblyName + " 도착 QR";
+		const container = document.getElementById('qrcode');
+		container.innerHTML = '';
+		new QRCode(container, { text: registerUrl, width: 220, height: 220 });
+		openModal('qrModal');
+	}
+</script>
+
+{% endblock %}
