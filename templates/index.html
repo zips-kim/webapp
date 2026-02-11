@@ -1,0 +1,23 @@
+<div class="dashboard-container">
+    <h1>유성구 통합 관리 시스템</h1>
+    
+    <div class="card-grid">
+        <div class="card">
+            <h3>유성 쉘터 온</h3>
+            <p>현재 보호 중인 이재민: {{ stats.shelteron }}명</p>
+            <a href="/shelteron">시스템 접속</a>
+        </div>
+
+        <div class="card">
+            <h3>데이터 시각화 (Flexible)</h3>
+            <p>등록된 관계 맵: {{ stats.flexible }}건</p>
+            <a href="/flexible">시스템 접속</a>
+        </div>
+
+        <div class="card">
+            <h3>요원 관리 시스템 (Nuclear)</h3>
+            <p>교육 이수 현황: {{ stats.nuclear }}명</p>
+            <a href="/nuclear">시스템 접속</a>
+        </div>
+    </div>
+</div>

@@ -1,53 +1,29 @@
-import os
-import io
-import json
-import math
-import sqlite3
-import time
+import os, io, json, math, sqlite3, time
 import pandas as pd
-from flask import Flask, render_template, request, redirect, url_for, flash, send_file, g, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, g, jsonify, current_app
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from flask_login import UserMixin, login_user, logout_user, login_required, current_user
 
 # ==========================================
-# 1. 설정 및 초기화 (Configuration)
+# 1. Blueprint 및 로컬 설정 (UPLOAD_FOLDER 포함)
 # ==========================================
-app = Flask(__name__)
-app.secret_key = 'super_secret_key' # 실서비스 시 변경 권장
-DB_NAME = "flex_system_v2.db"
+flexible_bp = Blueprint('flexible', __name__, 
+                        template_folder='templates', 
+                        static_folder='static')
 
-# [안정화] 절대 경로 사용으로 경로 에러 방지
+# [핵심 기능 1] 이 프로젝트만의 전용 경로 설정
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_NAME = os.path.join(BASE_DIR, "flex_system_v2.db")
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'static', 'uploads')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'xlsx', 'docx', 'xls'}
 
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+# 폴더 자동 생성
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# [안정화] 템플릿 기능 확장 (do, loop 등 지원)
-app.jinja_env.add_extension('jinja2.ext.do')
-app.jinja_env.add_extension('jinja2.ext.loopcontrols')
-
-# Flask-Login 설정
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = 'login'
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-# [안정화] JSON 파싱 에러 방지 헬퍼
-def safe_json_loads(json_str):
-    try:
-        if not json_str: return {}
-        return json.loads(json_str)
-    except:
-        return {}
-
-# ==========================================
-# 2. 데이터베이스 (Database Helper)
-# ==========================================
+# ------------------------------------------
+# 헬퍼 함수들 (기존 기능 유지)
+# ------------------------------------------
 def get_db():
     db = getattr(g, '_database', None)
     if db is None:
@@ -55,15 +31,34 @@ def get_db():
         db.row_factory = sqlite3.Row
     return db
 
-@app.teardown_appcontext
+@flexible_bp.teardown_app_request
 def close_connection(exception):
     db = getattr(g, '_database', None)
-    if db is not None:
-        db.close()
+    if db is not None: db.close()
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def safe_json_loads(json_str):
+    try: return json.loads(json_str) if json_str else {}
+    except: return {}
+
+# [핵심 기능 2] 권한 체크 및 템플릿 주입
+def has_permission(form_def, action):
+    if not current_user.is_authenticated: return False
+    if current_user.is_admin: return True
+    col_map = {'create': 'access_create', 'update': 'access_update', 'delete': 'access_delete'}
+    allowed_str = form_def[col_map[action]]
+    if not allowed_str or allowed_str.strip() == "": return True
+    return current_user.id in allowed_str.split(',')
+
+@flexible_bp.app_context_processor
+def utility_processor():
+    return dict(has_permission=has_permission)
 
 def init_db():
     """DB 테이블 및 기본 데이터 초기화"""
-    with app.app_context():
+    with current_app.app_context():
         db = get_db()
         # 테이블 생성 쿼리 모음
         queries = [
@@ -135,19 +130,12 @@ def has_permission(form_def, action):
     return current_user.id in allowed_list
 
 # Context Processor에 등록하여 템플릿에서 함수처럼 사용 가능하게 함
-@app.context_processor
+@flexible_bp.context_processor
 def utility_processor():
     return dict(has_permission=has_permission)
-    
-@login_manager.user_loader
-def load_user(user_id):
-    db = get_db()
-    user = db.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
-    if not user: return None
-    is_admin = user['is_admin'] if 'is_admin' in user.keys() else 0
-    return User(id=user['id'], name=user['name'], password=user['password'], is_admin=is_admin)
 
-@app.route('/login', methods=['GET', 'POST'])
+
+@flexible_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         user_id = request.form['user_id']
@@ -165,14 +153,14 @@ def login():
             flash('아이디 또는 비밀번호가 올바르지 않습니다.', 'danger')
     return render_template('login.html')
 
-@app.route('/logout')
+@flexible_bp.route('/logout')
 @login_required
 def logout():
     logout_user()
     flash('로그아웃 되었습니다.', 'info')
     return redirect(url_for('login'))
 
-@app.route('/register', methods=['GET', 'POST'])
+@flexible_bp.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
         user_id = request.form['user_id']
@@ -206,7 +194,7 @@ def build_menu_tree(items):
     return tree
 
 # 2. 메뉴 저장 로직 수정 (권한 저장)
-@app.route('/menus/save', methods=['POST'])
+@flexible_bp.route('/menus/save', methods=['POST'])
 @login_required
 def save_menu():
     db = get_db()
@@ -243,7 +231,7 @@ def save_menu():
 
 
 # 3. 메뉴 관리 페이지 수정 (사용자 목록 전달)
-@app.route('/menus', methods=['GET', 'POST'])
+@flexible_bp.route('/menus', methods=['GET', 'POST'])
 @login_required
 def manage_menus():
     # 1. 관리자 권한 체크
@@ -276,40 +264,45 @@ def manage_menus():
 
 
 # 4. 사이드바 메뉴 주입 로직 수정 (권한 필터링)
-@app.context_processor
+@flexible_bp.app_context_processor
 def inject_menu_list():
     db = get_db()
     try:
-        # [수정] allowed_users 컬럼을 가져와야 수정 시 체크박스가 채워집니다.
         menus = db.execute('SELECT id, title, type, url, icon, parent_id, sort_order, allowed_users FROM menus ORDER BY sort_order ASC').fetchall()
         
-        # 로그인 상태 체크 및 권한 필터링
         current_user_id = current_user.id if current_user.is_authenticated else None
         is_admin = current_user.is_admin if current_user.is_authenticated else False
 
         filtered_menus = []
         for m in menus:
-            allowed = m['allowed_users']
+            menu_dict = dict(m) # SQLite Row 객체를 딕셔너리로 변환하여 값 수정 가능하게 함
+            
+            # [핵심] URL이 '/'로 시작하는 내부 링크이고, 아직 '/flexible'이 안 붙어있다면 붙여줌
+            if menu_dict['url'] and menu_dict['url'].startswith('/'):
+                if not menu_dict['url'].startswith('/flexible'):
+                    menu_dict['url'] = '/flexible' + menu_dict['url']
+
+            allowed = menu_dict['allowed_users']
             
             # 1. 관리자는 무조건 통과
             if is_admin:
-                filtered_menus.append(m)
+                filtered_menus.append(menu_dict)
                 continue
             
             # 2. 빈 값은 전체 공개
             if not allowed or allowed.strip() == "":
-                filtered_menus.append(m)
+                filtered_menus.append(menu_dict)
                 continue
             
             # 3. 특정 사용자 지정된 경우
             if current_user_id and current_user_id in allowed.split(','):
-                filtered_menus.append(m)
+                filtered_menus.append(menu_dict)
         
         return dict(menu_tree=build_menu_tree(filtered_menus))
     except: return dict(menu_tree=[])
     
     
-@app.route('/menus/delete', methods=['POST'])
+@flexible_bp.route('/menus/delete', methods=['POST'])
 @login_required
 def delete_menu():
     db = get_db()
@@ -322,7 +315,7 @@ def delete_menu():
 # ==========================================
 # 5. 폼 정의 관리 (Form Management)
 # ==========================================
-@app.route('/create', methods=['GET', 'POST'])
+@flexible_bp.route('/create', methods=['GET', 'POST'])
 @login_required
 def create_form():
     if request.method == 'POST':
@@ -334,7 +327,7 @@ def create_form():
     all_users = db.execute('SELECT id, name FROM users').fetchall()
     return render_template('create.html', mode='create', all_forms=all_forms, all_users=all_users)
 
-@app.route('/edit/<int:form_id>', methods=['GET', 'POST'])
+@flexible_bp.route('/edit/<int:form_id>', methods=['GET', 'POST'])
 @login_required
 def edit_form(form_id):
     db = get_db()
@@ -393,7 +386,7 @@ def save_form_definition(form_id=None, is_new=True):
                    (title, json_str, view_type, page_limit, acc_create, acc_update, acc_delete, category, form_id))
     db.commit()
 
-@app.route('/form/delete/<int:form_id>', methods=['POST'])
+@flexible_bp.route('/form/delete/<int:form_id>', methods=['POST'])
 @login_required
 def delete_form(form_id):
     db = get_db()
@@ -510,7 +503,7 @@ def log_history(db, entry_id, action, details=""):
                    (entry_id, user_name, action, details))
     except: pass # 로그 저장 실패로 본동작이 멈추지 않게
 
-@app.route('/list/<int:form_id>')
+@flexible_bp.route('/list/<int:form_id>')
 @login_required
 def list_entries(form_id):
     db = get_db()
@@ -580,7 +573,7 @@ def list_entries(form_id):
                            filter_options=filter_options, current_filters=current_filters,
                            limit=per_page)
 
-@app.route('/entry/create/<int:form_id>', methods=['GET', 'POST'])
+@flexible_bp.route('/entry/create/<int:form_id>', methods=['GET', 'POST'])
 @login_required
 def create_entry(form_id):
     db = get_db()
@@ -624,7 +617,7 @@ def create_entry(form_id):
 
     return render_template('input.html', form=form_def, schema=schema, relation_options=relation_options)
 
-@app.route('/entry/edit/<int:entry_id>', methods=['GET', 'POST'])
+@flexible_bp.route('/entry/edit/<int:entry_id>', methods=['GET', 'POST'])
 @login_required
 def edit_entry(entry_id):
     db = get_db()
@@ -759,7 +752,7 @@ def get_reverse_references(db, current_form_id, current_entry_id):
     return references
     
 # [업그레이드] 삭제 시 참조 무결성 체크 (하위 데이터가 있으면 삭제 방지)
-@app.route('/entry/delete/<int:entry_id>', methods=['POST'])
+@flexible_bp.route('/entry/delete/<int:entry_id>', methods=['POST'])
 @login_required
 def delete_entry(entry_id):
     db = get_db()
@@ -807,7 +800,7 @@ def delete_entry(entry_id):
         
     return redirect(url_for('list_entries', form_id=form_id))
 
-@app.route('/entry/delete_all/<int:form_id>', methods=['POST'])
+@flexible_bp.route('/entry/delete_all/<int:form_id>', methods=['POST'])
 @login_required
 def delete_all_entries(form_id):
     db = get_db()
@@ -821,7 +814,7 @@ def delete_all_entries(form_id):
 # ==========================================
 # 7. 대시보드 / 관계도 / 통계 / 관리자
 # ==========================================
-@app.route('/')
+@flexible_bp.route('/')
 @login_required
 def home():
     db = get_db()
@@ -838,14 +831,14 @@ def home():
         recent_list.append({"form_title": r['title'], "form_id": r['form_id'], "summary": summary, "created_at": r['created_at']})
     return render_template('home.html', form_count=f_cnt, entry_count=e_cnt, recent_list=recent_list, chart_labels=chart_labels, chart_data=chart_data)
 
-@app.route('/stats')
+@flexible_bp.route('/stats')
 @login_required
 def stats_page():
     db = get_db()
     rows = db.execute('SELECT f.title, COUNT(e.id) as cnt FROM forms f LEFT JOIN entries e ON f.id = e.form_id GROUP BY f.id ORDER BY cnt DESC').fetchall()
     return render_template('stats.html', labels=[r['title'] for r in rows], data=[r['cnt'] for r in rows])
 
-@app.route('/relations')
+@flexible_bp.route('/relations')
 @login_required
 def relation_map():
     """데이터 관계도 시각화"""
@@ -875,7 +868,7 @@ def relation_map():
     
     return render_template('relations.html', nodes=nodes, links=links)
 
-@app.route('/relation_datas')
+@flexible_bp.route('/relation_datas')
 @login_required
 def relation_datas():
     db = get_db()
@@ -954,7 +947,7 @@ def relation_datas():
                         
     return render_template('relation_datas.html', nodes=nodes, links=links, form_map=form_map)
 
-@app.route('/list/network/<int:form_id>')
+@flexible_bp.route('/list/network/<int:form_id>')
 @login_required
 def list_network(form_id):
     db = get_db()
@@ -1067,7 +1060,7 @@ def list_network(form_id):
 
     return render_template('list_network.html', nodes=nodes, links=links, current_form=target_form, forms=all_forms, form_map=form_map)
 
-@app.route('/entry/network/<int:entry_id>')
+@flexible_bp.route('/entry/network/<int:entry_id>')
 @login_required
 def entry_network(entry_id):
     db = get_db()
@@ -1098,7 +1091,7 @@ def entry_network(entry_id):
     return render_template('entry_network.html', nodes=nodes, links=links, center_label=center_label)
 
 # [NEW] 관계 데이터 상세 조회 API (엣지 클릭 시 호출됨)
-@app.route('/api/relation_data/<int:form_id>/<field_key>')
+@flexible_bp.route('/api/relation_data/<int:form_id>/<field_key>')
 @login_required
 def api_relation_data(form_id, field_key):
     db = get_db()
@@ -1170,7 +1163,7 @@ def api_relation_data(form_id, field_key):
     
     
 # 1. 시스템 맵 (Edge에 데이터 개수 포함)
-@app.route('/system_map')
+@flexible_bp.route('/system_map')
 @login_required
 def system_map():
     db = get_db()
@@ -1219,7 +1212,7 @@ def system_map():
     return render_template('system_map.html', nodes=nodes, links=links)
 
 # 2. [NEW] 엣지 상세 관계도 (클릭 시 모달 내용)
-@app.route('/network/edge/<int:source_form_id>/<int:target_form_id>/<field_key>')
+@flexible_bp.route('/network/edge/<int:source_form_id>/<int:target_form_id>/<field_key>')
 @login_required
 def edge_network(source_form_id, target_form_id, field_key):
     db = get_db()
@@ -1272,7 +1265,7 @@ def edge_network(source_form_id, target_form_id, field_key):
                            nodes=nodes, links=links, 
                            src_title=src_form['title'], tgt_title=tgt_form['title'])
     
-@app.route('/admin', methods=['GET', 'POST'])
+@flexible_bp.route('/admin', methods=['GET', 'POST'])
 @login_required
 def admin_page():
     # 1. 관리자 권한 체크
@@ -1337,7 +1330,7 @@ def admin_page():
                            query_result=query_result,
                            query_error=query_error)
 
-@app.route('/admin/delete_user/<user_id>', methods=['POST'])
+@flexible_bp.route('/admin/delete_user/<user_id>', methods=['POST'])
 @login_required
 def delete_user(user_id):
     if not current_user.is_admin: return "권한 없음", 403
@@ -1350,7 +1343,7 @@ def delete_user(user_id):
 # ==========================================
 # 8. 엑셀 및 기타 API
 # ==========================================
-@app.route('/excel/template/<int:form_id>')
+@flexible_bp.route('/excel/template/<int:form_id>')
 @login_required
 def excel_download_template(form_id):
     db = get_db()
@@ -1364,7 +1357,7 @@ def excel_download_template(form_id):
     return send_file(output, as_attachment=True, download_name=f"{form['title']}_입력서식.xlsx")
 
 # [업그레이드] 엑셀 업로드 (기존 데이터 수정 + 신규 등록 + 히스토리 기록)
-@app.route('/excel/upload/<int:form_id>', methods=['POST'])
+@flexible_bp.route('/excel/upload/<int:form_id>', methods=['POST'])
 @login_required
 def excel_upload_entries(form_id):
     if 'file' not in request.files: return "파일 없음", 400
@@ -1429,7 +1422,7 @@ def excel_upload_entries(form_id):
         db.rollback()
         return f"업로드 처리 중 오류 발생: {str(e)}"
 
-@app.route('/excel/download/<int:form_id>')
+@flexible_bp.route('/excel/download/<int:form_id>')
 @login_required
 def excel_download_entries(form_id):
     db = get_db()
@@ -1564,7 +1557,7 @@ def excel_download_entries(form_id):
     output.seek(0)
     return send_file(output, as_attachment=True, download_name=f"{form['title']}_데이터목록.xlsx")
 
-@app.route('/api/preview/<int:form_id>')
+@flexible_bp.route('/api/preview/<int:form_id>')
 @login_required
 def api_preview_entries(form_id):
     db = get_db()
@@ -1582,11 +1575,11 @@ def api_preview_entries(form_id):
     return jsonify({'headers': labels, 'rows': result})
 
 # [안정화] 에러 핸들러
-@app.errorhandler(404)
+@flexible_bp.errorhandler(404)
 def page_not_found(e):
     return render_template('404.html'), 404
 
-@app.errorhandler(500)
+@flexible_bp.errorhandler(500)
 def internal_server_error(e):
     return render_template('500.html'), 500
 

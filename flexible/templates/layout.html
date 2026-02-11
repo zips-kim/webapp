@@ -20,11 +20,11 @@
 			<div class="mb-3 p-2 bg-secondary bg-opacity-25 rounded text-center">
 				<span class="d-block small text-muted">접속중</span>
 				<strong>👤 {{ current_user.name }}</strong> 님
-				<a href="/logout" class="btn btn-danger btn-sm w-100 mt-2">로그아웃</a>
+				<a href="{{ url_for('flexible.logout') }}" class="btn btn-danger btn-sm w-100 mt-2">로그아웃</a>
 			</div>
 		{% else %}
 			<div class="mb-3">
-				<a href="/login" class="btn btn-primary w-100">🔐 로그인</a>
+				<a href="{{ url_for('flexible.login') }}" class="btn btn-primary w-100">🔐 로그인</a>
 			</div>
 		{% endif %}
 		
@@ -71,18 +71,18 @@
 			{% if not menu_tree %}
 				<li class="nav-item p-3 text-center text-secondary small">
 					메뉴가 없습니다.<br>
-					<a href="/menus" class="text-white text-decoration-underline">메뉴 설정</a>에서 추가하세요.
+					<a href="{{ url_for('flexible.manage_menus') }}" class="text-white text-decoration-underline">메뉴 설정</a>에서 추가하세요.
 				</li>
 			{% endif %}
 		</ul>
 		{# [권한 적용] 관리자만 '전체 삭제' 메뉴 보임 #}
 		{% if current_user.is_admin %}
 		<hr class="mt-4">
-		<a href="/menus" class="text-warning d-flex align-items-center gap-2">
+		<a href="{{ url_for('flexible.manage_menus') }}" class="text-warning d-flex align-items-center gap-2">
 			<span>⚙️</span> 메뉴 관리
 		</a>
 		
-		<a href="/create" class="text-secondary d-flex align-items-center gap-2">
+		<a href="{{ url_for('flexible.create_form') }}" class="text-secondary d-flex align-items-center gap-2">
 			<span>➕</span> 시스템 정의
 		</a>
 		{% endif %}

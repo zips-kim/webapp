@@ -67,7 +67,7 @@
                     <h5 class="card-title fw-bold m-0 text-primary" id="editorTitle">➕ 새 메뉴 추가</h5>
                 </div>
                 <div class="card-body">
-                    <form action="/menus/save" method="POST" id="menuForm">
+                    <form action="{{ url_for('flexible.save_menus') }}" method="POST" id="menuForm">
                         <input type="hidden" name="menu_id" id="menu_id"> 
                         
                         <div class="mb-3">
@@ -154,7 +154,7 @@
                         </div>
                     </form>
                     
-                    <form action="/menus/delete" method="POST" class="mt-2" onsubmit="return confirm('정말 삭제하시겠습니까?');">
+                    <form action="{{ url_for('flexible.delete_menu') }}" method="POST" class="mt-2" onsubmit="return confirm('정말 삭제하시겠습니까?');">
                         <input type="hidden" name="menu_id" id="delete_menu_id">
                         <div class="d-grid">
                             <button type="submit" class="btn btn-danger btn-sm" id="btnDelete" style="display:none;">🗑️ 이 메뉴 삭제</button>
@@ -370,7 +370,7 @@
         }
         parseList(document.getElementById('nested-menu-root'), null);
 
-        fetch('/menus', {
+        fetch("{{ url_for('flexible.manage_menus') }}", {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({tree: flatData})

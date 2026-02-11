@@ -128,7 +128,9 @@
         html += `</div>`;
         
         contentEl.innerHTML = html;
-        document.getElementById('modalLink').href = "/list/" + id;
+        // '0'은 나중에 실제 id로 바뀔 임시 숫자입니다.
+        const listUrl = "{{ url_for('flexible.list_entries', form_id=0) }}".replace('0', id);
+        document.getElementById('modalLink').href = listUrl;
         document.getElementById('modalLink').style.display = 'inline-block';
         new bootstrap.Modal(document.getElementById('detailModal')).show();
     };
@@ -152,7 +154,11 @@
         const myModal = new bootstrap.Modal(document.getElementById('detailModal'));
         myModal.show();
 
-        fetch(`/api/relation_data/${link.source}/${link.key}`)
+        const apiUrl = "{{ url_for('flexible.get_relation_data', source='SRC_PLACEHOLDER', key='KEY_PLACEHOLDER') }}"
+            .replace('SRC_PLACEHOLDER', link.source)
+            .replace('KEY_PLACEHOLDER', link.key);
+
+        fetch(apiUrl)
             .then(res => res.json())
             .then(data => {
                 spinner.style.display = 'none';
@@ -248,7 +254,8 @@
                 });
 
                 const linkBtn = document.getElementById('modalLink');
-                linkBtn.href = `/list/${link.source}`;
+                // '0'을 임시값으로 하여 주소를 생성한 뒤, 실제 데이터인 link.source로 바꿉니다.
+                linkBtn.href = "{{ url_for('flexible.list_entries', form_id=0) }}".replace('0', link.source);
                 linkBtn.innerText = `📂 '${data.source_title}' 데이터 관리`;
                 linkBtn.style.display = 'inline-block';
             })

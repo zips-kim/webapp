@@ -10,7 +10,7 @@
                 <div class="card-header fw-bold bg-light">📂 테이블 목록</div>
                 <div class="list-group list-group-flush" style="max-height: 500px; overflow-y: auto;">
                     {% for table in tables %}
-                        <a href="/admin?table={{ table }}" class="list-group-item list-group-item-action {% if current_table == table %}active{% endif %}">
+                        <a href="{{ url_for('flexible.admin_page', table=table) }}" class="list-group-item list-group-item-action {% if current_table == table %}active{% endif %}">
                             {{ table }}
                         </a>
                     {% endfor %}
@@ -53,7 +53,7 @@
                                             {% endfor %}
                                             <td onclick="event.stopPropagation()">
                                                 {% if current_table == 'users' %}
-                                                <form method="POST" action="/admin/delete_user/{{ row['id'] }}" onsubmit="return confirm('삭제하시겠습니까?');" style="display:inline;">
+                                                <form method="POST" action="{{ url_for('flexible.delete_user', user_id=row['id']) }}" onsubmit="return confirm('삭제하시겠습니까?');" style="display:inline;">
                                                     <button class="btn btn-danger btn-sm py-0" style="font-size:0.7rem;">삭제</button>
                                                 </form>
                                                 {% endif %}
@@ -83,7 +83,7 @@
                     <span class="badge bg-warning text-dark">주의: 데이터가 영구 삭제될 수 있습니다.</span>
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="/admin">
+                    <form method="POST" action="{{ url_for('flexible.admin_page') }}">
                         <div class="mb-3">
                             <textarea id="sqlQueryInput" name="sql_query" class="form-control font-monospace bg-light" rows="6" placeholder="SELECT * FROM users WHERE..." style="font-size: 0.9rem;">{% if sql_query %}{{ sql_query }}{% elif current_table %}SELECT * FROM {{ current_table }} LIMIT 100{% endif %}</textarea>
                         </div>

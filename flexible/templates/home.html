@@ -45,7 +45,7 @@
 
         <div class="col-xl-3 col-md-6">
             <div class="card shadow-sm border-0 bg-primary text-white h-100 clickable-card" 
-                 onclick="location.href='/create';" style="cursor: pointer;">
+                 onclick="location.href='{{ url_for('flexible.create_form') }}';" style="cursor: pointer;">
                 <div class="card-body d-flex align-items-center justify-content-between">
                     <div>
                         <h6 class="fw-bold mb-1">새 시스템 만들기</h6>
@@ -58,7 +58,7 @@
 
         <div class="col-xl-3 col-md-6">
             <div class="card shadow-sm border-0 bg-dark text-white h-100 clickable-card" 
-                 onclick="location.href='/menus';" style="cursor: pointer;">
+                onclick="location.href='{{ url_for('flexible.manage_menus') }}';" style="cursor: pointer;">
                 <div class="card-body d-flex align-items-center justify-content-between">
                     <div>
                         <h6 class="fw-bold mb-1">메뉴 구성 관리</h6>
@@ -82,7 +82,7 @@
                     {% else %}
                         <div class="text-center py-5 text-muted">
                             <p>아직 데이터가 없습니다.</p>
-                            <a href="/create" class="btn btn-sm btn-outline-primary">첫 데이터 쌓으러 가기</a>
+                            <a href="{{ url_for('flexible.create_form') }}" class="btn btn-sm btn-outline-primary">첫 데이터 쌓으러 가기</a>
                         </div>
                     {% endif %}
                 </div>
@@ -98,7 +98,7 @@
                     {% if recent_list %}
                         <div class="list-group list-group-flush">
                             {% for item in recent_list %}
-                            <a href="/list/{{ item.form_id }}" class="list-group-item list-group-item-action p-3">
+                            <a href="{{ url_for('flexible.list_entries', form_id=item.form_id) }}" class="list-group-item list-group-item-action p-3">
                                 <div class="d-flex w-100 justify-content-between mb-1">
                                     <strong class="text-dark">{{ item.form_title }}</strong>
                                     <small class="text-muted">{{ item.created_at[:10] }}</small>

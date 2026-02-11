@@ -32,7 +32,7 @@
                     {% if saved_input and saved_input[field.key] %}
                         <div class="mt-2 p-2 bg-light border rounded d-inline-block">
                             <span class="small text-muted me-2">현재 파일:</span>
-                            <a href="{{ url_for('static', filename='uploads/' + saved_input[field.key]) }}" target="_blank" class="fw-bold text-decoration-none">
+                            <a href="{{ url_for('flexible.static', filename='uploads/' + saved_input[field.key]) }}" target="_blank" class="fw-bold text-decoration-none">
                                 📎 {{ saved_input[field.key] }}
                             </a>
                             <input type="hidden" name="existing_{{ field.key }}" value="{{ saved_input[field.key] }}">
@@ -146,7 +146,7 @@
                                     {% for item in ref.children %}
                                     <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0">
                                         <span>{{ item.label }}</span>
-                                        <a href="/entry/edit/{{ item.id }}" class="btn btn-xs btn-outline-secondary py-0" style="font-size: 11px;">
+                                        <a href="{{ url_for('flexible.edit_entry', entry_id=item.id) }}" class="btn btn-xs btn-outline-secondary py-0" style="font-size: 11px;">
                                             이동 ↗
                                         </a>
                                     </li>
@@ -167,7 +167,7 @@
                     {% if mode == 'edit' %}
                         <button type="button" 
                                 class="btn btn-outline-danger"
-                                formaction="/entry/delete/{{ saved_input['id'] }}"
+                                formaction="{{ url_for('flexible.delete_entry', entry_id=saved_input['id']) }}"
                                 formnovalidate
                                 onclick="return confirm('정말 삭제하시겠습니까?\n삭제된 데이터는 복구할 수 없습니다.');">
                             🗑️ 삭제
@@ -176,7 +176,7 @@
                 </div>
 
                 <div class="d-flex gap-2">
-                    <a href="/list/{{ form.id }}" class="btn btn-secondary px-4">취소</a>
+                    <a href="{{ url_for('flexible.list_entries', form_id=form.id) }}" class="btn btn-secondary px-4">취소</a>
                     <button type="submit" class="btn btn-primary px-4 fw-bold">💾 저장하기</button>
                 </div>
             </div>
